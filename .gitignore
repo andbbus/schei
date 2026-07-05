@@ -1,0 +1,30 @@
+# deps / build
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# database (local SQLite — never commit financial data)
+*.sqlite
+*.sqlite3
+*.db
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# YNAB exports (personal financial data — never commit)
+*.ynab*
+ynab-export/
+data/ynab/
+*Register.csv
+*Budget.csv
+
+# misc
+.DS_Store
+*.log
+.vite/
+coverage/

@@ -1,0 +1,202 @@
+// YNAB-clone data model. Mirrors the shape of YNAB's public API.
+// Money is stored as integer milliunits (1 currency unit = 1000 milliunits).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Budget {
+  id             String   @id @default(cuid())
+  name           String
+  currencyIso    String   @default("USD")
+  currencySymbol String   @default("$")
+  decimalDigits  Int      @default(2)
+  dateFormat     String   @default("MM/DD/YYYY")
+  locale         String   @default("en-US") // number formatting (e.g. "it-IT" → 1.234,56)
+  firstMonth     String // "2026-01-01"
+  lastMonth      String // "2026-12-01"
+  createdAt      DateTime @default(now())
+
+  accounts              Account[]
+  categoryGroups        CategoryGroup[]
+  categories            Category[]
+  payees                Payee[]
+  transactions          Transaction[]
+  monthCategories       MonthCategory[]
+  monthBudgets          MonthBudget[]
+  scheduledTransactions ScheduledTransaction[]
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  name      String
+  type      String // checking | savings | cash | creditCard | lineOfCredit | otherAsset | otherLiability | mortgage | autoLoan
+  onBudget  Boolean  @default(true)
+  closed    Boolean  @default(false)
+  note      String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  transactions    Transaction[]
+  transferPayee   Payee?        @relation("AccountTransferPayee")
+  paymentCategory Category?     @relation("CardPaymentCategory")
+
+  @@index([budgetId])
+}
+
+model CategoryGroup {
+  id        String  @id @default(cuid())
+  budgetId  String
+  budget    Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  name      String
+  hidden    Boolean @default(false)
+  deleted   Boolean @default(false)
+  isSystem  Boolean @default(false) // "Internal" (Inflow) and "Credit Card Payments"
+  sortOrder Int     @default(0)
+
+  categories Category[]
+
+  @@index([budgetId])
+}
+
+model Category {
+  id        String  @id @default(cuid())
+  budgetId  String
+  budget    Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     CategoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name      String
+  hidden    Boolean @default(false)
+  deleted   Boolean @default(false)
+  note      String?
+  sortOrder Int     @default(0)
+  isInflow  Boolean @default(false) // the "Inflow: Ready to Assign" category
+
+  // Set on a credit-card payment category → the card account it pays.
+  paymentAccountId String?  @unique
+  paymentAccount   Account? @relation("CardPaymentCategory", fields: [paymentAccountId], references: [id], onDelete: Cascade)
+
+  // Target / goal (YNAB goal_type: MF | NEED | TB | TBD)
+  goalType             String?
+  goalTarget           Int? // milliunits
+  goalCadence          String? // monthly | weekly | yearly | byDate
+  goalDay              Int? // 0-6 for weekly targets (0 = Sunday)
+  goalTargetMonth      String? // "2026-12-01" for TBD / by-date
+  goalCreationMonth    String?
+  goalNeedsWholeAmount Boolean? // NEED: true = "refill up to", false = "set aside another"
+
+  monthCategories MonthCategory[]
+  transactions    Transaction[]
+  subtransactions Subtransaction[]
+
+  @@index([groupId])
+}
+
+// One budget "cell": how much was assigned to a category in a given month.
+model MonthCategory {
+  id         String   @id @default(cuid())
+  budgetId   String
+  budget     Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  month      String // "2026-06-01"
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  assigned   Int      @default(0) // milliunits budgeted this month
+
+  @@unique([categoryId, month])
+  @@index([budgetId, month])
+}
+
+model MonthBudget {
+  id       String  @id @default(cuid())
+  budgetId String
+  budget   Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  month    String
+  note     String?
+
+  @@unique([budgetId, month])
+}
+
+model Payee {
+  id                String   @id @default(cuid())
+  budgetId          String
+  budget            Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  name              String
+  transferAccountId String?  @unique
+  transferAccount   Account? @relation("AccountTransferPayee", fields: [transferAccountId], references: [id], onDelete: Cascade)
+
+  transactions    Transaction[]
+  subtransactions Subtransaction[]
+
+  @@index([budgetId])
+}
+
+model Transaction {
+  id                    String   @id @default(cuid())
+  budgetId              String
+  budget                Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  date                  String // "2026-06-15"
+  amount                Int // milliunits, positive = inflow, negative = outflow
+  memo                  String?
+  cleared               String   @default("uncleared") // uncleared | cleared | reconciled
+  approved              Boolean  @default(true)
+  flagColor             String? // red | orange | yellow | green | blue | purple
+  accountId             String
+  account               Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  payeeId               String?
+  payee                 Payee?   @relation(fields: [payeeId], references: [id])
+  categoryId            String?
+  category              Category? @relation(fields: [categoryId], references: [id])
+  transferAccountId     String? // set when this is a transfer
+  transferTransactionId String? // the paired transaction on the other account
+  importId              String?
+  deleted               Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  subtransactions Subtransaction[]
+
+  @@index([budgetId, date])
+  @@index([accountId])
+}
+
+// A recurring (or one-off future) transaction template. Materialized into real
+// transactions when nextDate comes due; renders as an upcoming ghost row until then.
+model ScheduledTransaction {
+  id                String  @id @default(cuid())
+  budgetId          String
+  budget            Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId         String
+  payeeId           String?
+  categoryId        String?
+  amount            Int // milliunits, signed
+  memo              String?
+  flagColor         String?
+  frequency         String // once | weekly | everyOtherWeek | monthly | yearly
+  nextDate          String // "YYYY-MM-DD"
+  transferAccountId String?
+  deleted           Boolean @default(false)
+
+  @@index([budgetId])
+  @@index([accountId])
+}
+
+model Subtransaction {
+  id                String      @id @default(cuid())
+  transactionId     String
+  transaction       Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  amount            Int
+  memo              String?
+  payeeId           String?
+  payee             Payee?      @relation(fields: [payeeId], references: [id])
+  categoryId        String?
+  category          Category?   @relation(fields: [categoryId], references: [id])
+  transferAccountId String?
+
+  @@index([transactionId])
+}
