@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ChatMsg } from '../api'
 import { api, errMsg } from '../api'
@@ -51,13 +53,19 @@ function Bubble({ m }: { m: ChatMsg }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] whitespace-pre-wrap rounded-lg border px-3 py-2 text-[13px] leading-relaxed ${
+        className={`max-w-[85%] rounded-lg border px-3 py-2 text-[13px] leading-relaxed ${
           isUser
-            ? 'border-blue-300 bg-blue-50 text-slate-800'
+            ? 'whitespace-pre-wrap border-blue-300 bg-blue-50 text-slate-800'
             : 'border-slate-200 bg-panel text-slate-700'
         }`}
       >
-        {m.content}
+        {isUser ? (
+          m.content
+        ) : (
+          <div className="md">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   )
