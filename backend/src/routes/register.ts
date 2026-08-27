@@ -184,7 +184,7 @@ function serializeTxn(
   };
 }
 
-interface TxnBody {
+export interface TxnBody {
   accountId: string;
   date: string;
   payeeName?: string;
@@ -275,8 +275,8 @@ function signedAmount(b: TxnBody): number {
 // Create a transaction (or a mirrored transfer pair). Shared by the POST route
 // (logged, transactional) and scheduled-transaction materialization (unlogged).
 // Rules auto-categorize only the non-transfer branch, and only when the caller
-// passed no category.
-async function createTransaction(budgetId: string, b: TxnBody, tx: DbClient = prisma) {
+// passed no category. Also used by the assistant's create_transaction tool.
+export async function createTransaction(budgetId: string, b: TxnBody, tx: DbClient = prisma) {
   const amount = signedAmount(b);
 
   if (b.transferAccountId) {

@@ -22,8 +22,10 @@ let budgetId: string;
 let sessionId: string;
 
 // ---- mock gateway ----
-const received: { messages: { role: string; content: string }[]; model: string }[] = [];
+const received: { messages: { role: string; content: string; tool_call_id?: string }[]; model: string }[] = [];
 let upstreamMode: 'ok' | 'boom' = 'ok';
+// scripted tool-call responses, consumed FIFO before the default reply
+let script: Record<string, unknown>[] = [];
 
 const mock = createServer((req: IncomingMessage, res: ServerResponse) => {
   let body = '';
@@ -37,6 +39,10 @@ const mock = createServer((req: IncomingMessage, res: ServerResponse) => {
     }
     received.push({ messages: parsed.messages ?? [], model: parsed.model });
     res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (script.length > 0) {
+      res.end(JSON.stringify({ id: 'mock-t', object: 'chat.completion', model: parsed.model, choices: [{ index: 0, finish_reason: 'tool_calls', message: script.shift() }] }));
+      return;
+    }
     res.end(
       JSON.stringify({
         id: 'mock-1',
@@ -126,6 +132,89 @@ export async function test() {
   assert.equal(afterFail[afterFail.length - 1].role, 'user');
   assert.equal(afterFail[afterFail.length - 1].content, 'this will fail');
   upstreamMode = 'ok';
+
+  // ---- tools: assign_money mutates the budget and is undoable ----
+  const group = await prisma.categoryGroup.create({ data: { budgetId, name: 'G', sortOrder: 0 } });
+  const groceries = await prisma.category.create({ data: { budgetId, groupId: group.id, name: 'Groceries', sortOrder: 0 } });
+  const fun = await prisma.category.create({ data: { budgetId, groupId: group.id, name: 'Fun Money', sortOrder: 1 } });
+  const bank = await prisma.account.create({ data: { budgetId, name: 'Bank', type: 'checking', onBudget: true } });
+  const chat2 = (await post('/chat/sessions', {})).json();
+
+  script = [
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        { id: 'tc1', type: 'function', function: { name: 'assign_money', arguments: JSON.stringify({ category: 'Groceries', amount: 200, month: '2026-08' }) } },
+      ],
+    },
+    { role: 'assistant', content: 'DONE' },
+  ];
+  const t1 = await post(`/chat/sessions/${chat2.id}/messages`, { content: 'assign 200 to groceries for August' });
+  assert.equal(t1.statusCode, 200, t1.body);
+  const t1body = t1.json();
+  assert.equal(t1body.assistant.content, 'DONE');
+  assert.equal(t1body.toolCalls.length, 1);
+  assert.match(t1body.toolCalls[0].summary, /Assigned .*200.* to "Groceries"/);
+  const mc = await prisma.monthCategory.findUnique({ where: { categoryId_month: { categoryId: groceries.id, month: '2026-08-01' } } });
+  assert.equal(mc?.assigned, 200000);
+  const assignOp = await prisma.opLog.findFirst({ where: { budgetId, kind: 'assign' }, orderBy: { id: 'desc' } });
+  assert.ok(assignOp, 'AI assign must be logged for undo');
+  // the tool result reached the model as an ephemeral role:'tool' message
+  const lastRound = received[received.length - 1].messages;
+  assert.ok(lastRound.some((m) => m.role === 'tool' && m.tool_call_id === 'tc1' && /200/.test(m.content)));
+  // but 'tool' messages are never persisted
+  const persisted = (await app.inject({ method: 'GET', url: `/api/chat/sessions/${chat2.id}/messages` })).json();
+  assert.deepEqual(persisted.map((m: { role: string }) => m.role), ['user', 'assistant']);
+
+  // ---- tools: create_transaction with rules + undo op ----
+  script = [
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        { id: 'tc2', type: 'function', function: { name: 'create_transaction', arguments: JSON.stringify({ account: 'Bank', payee: 'Kino', amount: 12.5, category: 'Fun Money', date: '2026-08-20' }) } },
+      ],
+    },
+    { role: 'assistant', content: 'CREATED' },
+  ];
+  const t2 = await post(`/chat/sessions/${chat2.id}/messages`, { content: 'log a 12.50 cinema ticket from the bank account' });
+  assert.equal(t2.statusCode, 200, t2.body);
+  const txn = await prisma.transaction.findFirst({ where: { budgetId, payee: { name: 'Kino' } } });
+  assert.ok(txn, 'AI-created transaction exists');
+  assert.equal(txn.amount, -12500);
+  assert.equal(txn.categoryId, fun.id);
+  assert.equal(txn.date, '2026-08-20');
+  const createOp = await prisma.opLog.findFirst({ where: { budgetId, kind: 'createTxn' }, orderBy: { id: 'desc' } });
+  assert.ok(createOp, 'AI transaction must be logged for undo');
+
+  // ---- tools: bad category → error travels back to the model, no crash ----
+  script = [
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        { id: 'tc3', type: 'function', function: { name: 'move_money', arguments: JSON.stringify({ from_category: 'Ready to Assign', to_category: 'Nope', amount: 5 }) } },
+      ],
+    },
+    { role: 'assistant', content: 'OK I told the user' },
+  ];
+  const t3 = await post(`/chat/sessions/${chat2.id}/messages`, { content: 'move 5 to Nope' });
+  assert.equal(t3.statusCode, 200, t3.body);
+  assert.match(t3.json().toolCalls[0].summary, /not found/);
+
+  // ---- tools: get_rta read-only ----
+  script = [
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [{ id: 'tc4', type: 'function', function: { name: 'get_rta', arguments: '{}' } }],
+    },
+    { role: 'assistant', content: 'RTA REPORTED' },
+  ];
+  const t4 = await post(`/chat/sessions/${chat2.id}/messages`, { content: 'how much is left to assign?' });
+  assert.equal(t4.statusCode, 200, t4.body);
+  assert.match(t4.json().toolCalls[0].summary, /Ready to Assign/);
 
   // ---- delete cascades ----
   const del = await app.inject({ method: 'DELETE', url: `/api/chat/sessions/${sessionId}` });

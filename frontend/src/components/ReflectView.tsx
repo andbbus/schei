@@ -10,7 +10,6 @@ import {
   Bar,
   LineChart,
   Line,
-  AreaChart,
   Area,
   ComposedChart,
   ReferenceLine,
@@ -28,7 +27,7 @@ import TxnListModal, { type Drill } from './TxnListModal'
 import DebtSavings from './DebtSavings'
 import { buildBva, rowColor, type BvaRow } from '../lib/bva'
 
-const TABS = ['Spending', 'Net Worth', 'Income v Expense', 'Age of Money', 'Budget vs Actual', 'Cash Flow', 'Debt & Savings'] as const
+const TABS = ['Spending', 'Net Worth', 'Income v Expense', 'Age of Money', 'Budget vs Actual', 'Cash Flow', 'Debt & Savings', 'Anomalies'] as const
 type Tab = (typeof TABS)[number]
 
 const COLORS = ['#7aa2f7', '#9ece6a', '#ff9e64', '#bb9af7', '#f7768e', '#73daca', '#e0af68', '#f477c1', '#565f89']
@@ -112,6 +111,8 @@ export default function ReflectView() {
               </button>
             ))}
           </div>
+        ) : tab === 'Anomalies' ? (
+          <span className="text-[12px] text-slate-400">Unusual charges vs each payee’s own history</span>
         ) : tab === 'Budget vs Actual' ? (
           <div className="flex items-center gap-1.5">
             <button
@@ -189,6 +190,7 @@ export default function ReflectView() {
         {tab === 'Age of Money' && <Age range={range} c={c} />}
         {tab === 'Cash Flow' && <CashFlow horizon={horizon} c={c} tip={tip} />}
         {tab === 'Debt & Savings' && <DebtSavings meta={meta} range={range} c={c} />}
+        {tab === 'Anomalies' && <Anomalies c={c} />}
         {tab === 'Budget vs Actual' && (
           <BudgetVsActual
             month={month}
@@ -208,6 +210,7 @@ export default function ReflectView() {
         {tab === 'Cash Flow' && `Projection: ${horizon} months`}
         {(tab === 'Net Worth' || tab === 'Income v Expense' || tab === 'Age of Money') && `Showing ${rangeLabel}`}
         {tab === 'Debt & Savings' && ''}
+        {tab === 'Anomalies' && 'Most recent 90 days unless widened'}
       </div>
     </div>
   )
@@ -323,6 +326,22 @@ function NetWorth({
     queryKey: ['rep', 'networth', range.from, range.to],
     queryFn: () => api.reportNetWorth(range.from, range.to),
   })
+  // projection: actual series + dashed continuation at the cash-flow pace
+  const { data: fc } = useQuery({ queryKey: ['rep', 'networth-forecast', 12], queryFn: () => api.reportNetWorthForecast(12) })
+  const chart = (() => {
+    if (!data) return []
+    const rows: { month: string; netWorth: number | null; projected: number | null }[] = data.map((m) => ({
+      month: m.month,
+      netWorth: m.netWorth,
+      projected: null,
+    }))
+    if (fc && rows.length > 0) {
+      // anchor the projection at the last actual month so the lines connect
+      rows[rows.length - 1].projected = fc.lastNetWorth
+      for (const f of fc.forecast) rows.push({ month: f.month, netWorth: null, projected: f.projected })
+    }
+    return rows
+  })()
   if (!data) return <Loading />
   const exportCsv = () => {
     const rows: (string | number | null)[][] = [
@@ -336,14 +355,15 @@ function NetWorth({
       <SectionTitle title="Net Worth" onExport={exportCsv} />
       <div className="print:hidden">
         <ResponsiveContainer width="100%" height={420}>
-          <AreaChart data={data}>
+          <ComposedChart data={chart}>
             <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
             <XAxis dataKey="month" tickFormatter={shortMonth} fontSize={12} />
             <YAxis tickFormatter={axis} fontSize={12} width={80} />
             <Tooltip formatter={(v) => tip(Number(v))} labelFormatter={(m) => shortMonth(String(m))} />
             <Legend />
-            <Area type="monotone" dataKey="netWorth" name="Net Worth" stroke="#7aa2f7" fill="rgba(122,162,247,0.18)" />
-          </AreaChart>
+            <Area type="monotone" dataKey="netWorth" name="Net Worth" stroke="#7aa2f7" fill="rgba(122,162,247,0.18)" connectNulls />
+            {fc && <Line type="monotone" dataKey="projected" name="Projected" stroke="#bb9af7" strokeDasharray="6 4" dot={false} connectNulls />}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       <table className="hidden print:block print:text-[10px]">
@@ -474,6 +494,87 @@ function Age({ range, c }: { range: { from: string; to: string }; c: Currency })
           ))}
         </tbody>
       </table>
+    </>
+  )
+}
+
+function Anomalies({ c }: { c: Currency }) {
+  const [days, setDays] = useState(90)
+  const { data } = useQuery({ queryKey: ['rep', 'anomalies', days], queryFn: () => api.reportAnomalies(days) })
+  const rows = data?.anomalies ?? []
+  const exportCsv = () => {
+    const out: (string | number | null)[][] = [
+      ['Date', 'Payee', 'Category', 'Amount', 'Typical', 'Deviation', 'Direction'],
+      ...rows.map((a) => [
+        a.date,
+        a.payeeName,
+        a.categoryName,
+        csvAmount(a.amount, c),
+        csvAmount(-a.mean, c),
+        csvAmount(-a.delta, c),
+        a.direction,
+      ]),
+    ]
+    downloadFile(`reflect anomalies ${days}d.csv`, toCsv(out, c.locale))
+  }
+  return (
+    <>
+      <SectionTitle title="Anomalies" onExport={exportCsv} />
+      <div className="print-hide mb-3 flex items-center gap-1.5">
+        {[30, 60, 90, 180, 365].map((n) => (
+          <button
+            key={n}
+            onClick={() => setDays(n)}
+            className={`rounded px-2.5 py-1 text-[12px] font-medium ${
+              days === n ? 'bg-accent text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            {n} days
+          </button>
+        ))}
+      </div>
+      {rows.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-panel p-6 text-center text-[13px] text-slate-400">
+          Nothing unusual — every recent charge is in line with its payee’s history.
+        </div>
+      ) : (
+        <div className="overflow-visible rounded-lg border border-slate-200 bg-panel">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">Payee</th>
+                <th className="px-3 py-2">Category</th>
+                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2 text-right">Typical</th>
+                <th className="px-3 py-2 text-right">Deviation</th>
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((a) => (
+                <tr key={a.txnId} className="border-b border-slate-200 last:border-0">
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-500">{dateDisplay(a.date)}</td>
+                  <td className="px-3 py-2 font-medium text-slate-700">{a.payeeName || '—'}</td>
+                  <td className="px-3 py-2 text-slate-500">{a.categoryName ?? '—'}</td>
+                  <td className="tnum px-3 py-2 text-right font-semibold text-slate-800">{fmt(a.amount, c)}</td>
+                  <td className="tnum px-3 py-2 text-right text-slate-500">{fmt(-a.mean, c)}</td>
+                  <td className={`tnum px-3 py-2 text-right font-semibold ${a.direction === 'increase' ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {a.direction === 'increase' ? '+' : '−'}
+                    {fmt(a.delta, { ...c, symbol: '' })}
+                  </td>
+                  <td className="px-3 py-2 text-right text-[11px] text-slate-400">
+                    {a.direction === 'increase' ? '▲ spike' : '▼ drop'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="mt-3 text-[11px] text-slate-400">
+        Flags charges deviating sharply (z ≥ 3, min €0.50) from the same payee’s past outflows — spikes and unusual drops.
+      </div>
     </>
   )
 }

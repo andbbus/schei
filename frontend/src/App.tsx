@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import Sidebar from './components/Sidebar'
 import HistoryMenu from './components/HistoryMenu'
+import CommandPalette from './components/CommandPalette'
 
 export default function App() {
   const { data, isLoading, error } = useQuery({ queryKey: ['budget'], queryFn: api.budget })
@@ -25,6 +26,7 @@ export default function App() {
         <Outlet context={data} />
       </main>
       <HistoryMenu />
+      <CommandPalette meta={data} />
     </div>
   )
 }

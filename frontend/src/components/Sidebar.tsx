@@ -76,6 +76,7 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
         <NavItem to="/debts" label="Debts" icon="📉" />
         <NavItem to="/goals" label="Goals" icon="🎯" />
         <NavItem to="/subscriptions" label="Subscriptions" icon="🔁" />
+        <NavItem to="/calendar" label="Calendar" icon="📅" />
         <NavItem to="/shopping" label="Shopping" icon="🛒" />
     <NavItem to="/assistant" label="Assistant" icon="🤖" />
       </nav>

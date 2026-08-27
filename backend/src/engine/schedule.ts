@@ -39,3 +39,28 @@ export function nextOccurrence(frequency: string, date: string, anchorDay?: numb
       return null;
   }
 }
+
+// Expand a schedule's occurrences within [from, to] (inclusive). Walks forward
+// from the schedule's own nextDate; 'once' yields only that date when inside
+// the window. `endMonth` (YYYY-MM-01) stops the run after that month.
+export function occurrencesInRange(
+  frequency: string,
+  nextDate: string,
+  from: string,
+  to: string,
+  anchorDay?: number,
+  endMonth?: string | null,
+): string[] {
+  const inWindow = (d: string) => d >= from && d <= to && (!endMonth || d.slice(0, 7) <= endMonth.slice(0, 7));
+  if (frequency === 'once') return inWindow(nextDate) ? [nextDate] : [];
+  const out: string[] = [];
+  let cursor = nextDate;
+  for (let i = 0; i < 400; i++) {
+    if (cursor > to) break;
+    if (inWindow(cursor)) out.push(cursor);
+    const n = nextOccurrence(frequency, cursor, anchorDay);
+    if (!n) break;
+    cursor = n;
+  }
+  return out;
+}

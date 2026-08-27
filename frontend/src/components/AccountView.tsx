@@ -250,7 +250,7 @@ export default function AccountView() {
       {showRules && <RulesManager groups={groups ?? []} onClose={() => setShowRules(false)} />}
       {showSuggestions && <SuggestionsModal accountId={id} c={c} groups={groups ?? []} onClose={() => setShowSuggestions(false)} />}
       {showPayees && <PayeesManager onClose={() => setShowPayees(false)} />}
-      {showImport && <ImportCsvModal account={account} accounts={meta.accounts} onClose={() => setShowImport(false)} />}
+      {showImport && <ImportCsvModal account={account} accounts={meta.accounts} c={c} onClose={() => setShowImport(false)} />}
       {showDuplicates && <DuplicatesModal accountId={id} c={c} onClose={() => setShowDuplicates(false)} />}
 
       <FilterBar

@@ -83,7 +83,10 @@ export default function AssistantView() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [tools, setTools] = useState<{ name: string; summary: string }[]>([])
+  const [listening, setListening] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const recRef = useRef<{ stop: () => void } | null>(null)
 
   const { data: status } = useQuery({ queryKey: ['chat-status'], queryFn: api.chatStatus })
   const { data: sessions } = useQuery({ queryKey: ['chat-sessions'], queryFn: api.chatSessions })
@@ -125,15 +128,54 @@ export default function AssistantView() {
   })
   const send = useMutation({
     mutationFn: (content: string) => api.sendChatMessage(activeId!, content),
-    onSuccess: invalidate,
+    onSuccess: (res) => {
+      invalidate()
+      // tool chips + budget refresh when the assistant actually changed things
+      setTools(res.toolCalls ?? [])
+      if (res.toolCalls?.length) {
+        qc.invalidateQueries({ queryKey: ['budget'] })
+        qc.invalidateQueries({ queryKey: ['month'] })
+        qc.invalidateQueries({ queryKey: ['txns'] })
+        qc.invalidateQueries({ queryKey: ['categories'] })
+        qc.invalidateQueries({ queryKey: ['ops'] })
+        qc.invalidateQueries({ queryKey: ['scheduled'] })
+      }
+    },
     onError: (e: Error) => setError(errMsg(e)),
   })
+
+  // ---- voice dictation (Web Speech API; button hidden when unsupported) ----
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const SR: any = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? null
+  const toggleMic = () => {
+    if (!SR) return
+    if (listening) {
+      recRef.current?.stop()
+      return
+    }
+    const rec = new SR()
+    rec.lang = navigator.language || 'en-US'
+    rec.interimResults = true
+    rec.continuous = false
+    const base = draft
+    rec.onresult = (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => {
+      let txt = ''
+      for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript
+      setDraft((base ? base + ' ' : '') + txt)
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    recRef.current = rec
+    setListening(true)
+    rec.start()
+  }
 
   const submit = () => {
     const text = draft.trim()
     if (!text || !activeId || send.isPending) return
     setDraft('')
     setError(null)
+    setTools([])
     send.mutate(text)
   }
 
@@ -212,6 +254,19 @@ export default function AssistantView() {
               <Bubble key={m.id} m={m} />
             ))}
             {pendingUser && <Bubble m={pendingUser} />}
+            {tools.length > 0 && (
+              <div className="flex flex-wrap justify-start gap-1.5">
+                {tools.map((t, i) => (
+                  <span
+                    key={i}
+                    title={t.summary}
+                    className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700"
+                  >
+                    ⚒ {t.name.replace(/_/g, ' ')} — {t.summary}
+                  </span>
+                ))}
+              </div>
+            )}
             {send.isPending && (
               <div className="flex justify-start">
                 <div className="rounded-lg border border-slate-200 bg-panel px-3 py-2 text-[13px] text-slate-400">
@@ -241,6 +296,20 @@ export default function AssistantView() {
                 rows={2}
                 className="flex-1 resize-none rounded-md border border-slate-300 bg-panel px-2.5 py-1.5 text-[13px] text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500/35 disabled:opacity-50"
               />
+              {SR && (
+                <button
+                  onClick={toggleMic}
+                  disabled={!activeId || send.isPending}
+                  title={listening ? 'Stop dictation' : 'Dictate (voice input)'}
+                  className={`rounded px-3 py-2 text-[14px] transition-colors disabled:opacity-40 ${
+                    listening
+                      ? 'animate-pulse bg-red-500 text-white'
+                      : 'border border-slate-300 bg-panel text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  🎙
+                </button>
+              )}
               <button
                 onClick={submit}
                 disabled={!activeId || !draft.trim() || send.isPending}

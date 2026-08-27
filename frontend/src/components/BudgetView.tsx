@@ -1,12 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { BudgetMeta, CategoryView } from '../api'
 import { api, errMsg } from '../api'
 import { fmt, monthLabel, type Currency } from '../format'
+import type { AutoAssignMode } from '../api'
 import CategoryRow from './CategoryRow'
 import Inspector from './Inspector'
 import ForecastPanel from './ForecastPanel'
+
+// Toolbar quick-budget actions (YNAB's "Auto-assign" dropdown). capRta clamps
+// the underfunded plan to Ready-to-Assign, largest shortfall first.
+const QUICK_MODES: { mode: AutoAssignMode; capRta?: boolean; label: string; hint: string }[] = [
+  { mode: 'underfunded', capRta: true, label: 'Underfunded', hint: 'Fill every target shortfall, capped at Ready to Assign' },
+  { mode: 'underfunded', label: 'Underfunded (override RTA)', hint: 'Fill every target shortfall, even beyond Ready to Assign' },
+  { mode: 'averageSpent', label: 'Average spent (3m)', hint: 'Assign each category’s average spending of the last 3 months' },
+  { mode: 'spentLastMonth', label: 'Spent last month', hint: 'Assign what each category actually spent last month' },
+  { mode: 'assignedLastMonth', label: 'Assigned last month', hint: 'Copy last month’s assignments' },
+  { mode: 'resetAssigned', label: 'Reset assigned to 0', hint: 'Clear this month’s assignments (money returns to RTA)' },
+]
 
 export default function BudgetView() {
   const meta = useOutletContext<BudgetMeta>()
@@ -49,6 +61,30 @@ export default function BudgetView() {
   })
 
   const idx = meta.months.indexOf(month)
+  const [autoMenu, setAutoMenu] = useState(false)
+  const [autoConfirm, setAutoConfirm] = useState<(typeof QUICK_MODES)[number] | null>(null)
+  const autoRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!autoMenu) return
+    const close = (e: MouseEvent) => {
+      if (!autoRef.current?.contains(e.target as Node)) setAutoMenu(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [autoMenu])
+  const quickBudget = useMutation({
+    mutationFn: (m: { mode: AutoAssignMode; capRta?: boolean }) => api.quickBudget(month, m.mode, m.capRta),
+    onSuccess: (res) => {
+      refresh()
+      setAutoConfirm(null)
+      alert(`Auto-assign: ${res.summary.changed} categories changed (${fmt(res.summary.totalDelta, c)}).`)
+    },
+    onError: (e: Error) => alert(errMsg(e)),
+  })
+  const totalUnderfunded = useMemo(
+    () => (data ? data.groups.reduce((s, g) => s + g.categories.reduce((s2, cv) => s2 + cv.target.underfunded, 0), 0) : 0),
+    [data],
+  )
   const onSelect = (id: string, additive: boolean) =>
     setSelected((prev) => {
       if (additive) {
@@ -86,12 +122,46 @@ export default function BudgetView() {
           </button>
         </div>
 
+        <div ref={autoRef} className="relative ml-auto">
+          <button
+            onClick={() => setAutoMenu((v) => !v)}
+            className="rounded border border-slate-300 bg-panel px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            ⚡ Auto-assign
+            {totalUnderfunded > 0 && (
+              <span className="ml-1.5 text-[11px] font-semibold text-amber-600">{fmt(-totalUnderfunded, c)}</span>
+            )}
+          </button>
+          {autoMenu && (
+            <div className="absolute right-0 z-20 mt-1 w-72 overflow-hidden rounded-md border border-slate-200 bg-panel py-1 shadow-[var(--elev-popover)]">
+              {QUICK_MODES.map((m, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setAutoMenu(false)
+                    setAutoConfirm(m)
+                  }}
+                  className="block w-full px-3 py-2 text-left transition-colors hover:bg-slate-100"
+                >
+                  <div className="text-[13px] font-medium text-slate-700">
+                    {m.label}
+                    {m.mode === 'underfunded' && m.capRta && totalUnderfunded > 0 && (
+                      <span className="ml-1 text-[11px] font-semibold text-amber-600">{fmt(-totalUnderfunded, c)}</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-400">{m.hint}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button
           onClick={() => {
             const name = window.prompt('Group name')?.trim()
             if (name) groupOp.mutate(() => api.createGroup(name))
           }}
-          className="ml-auto rounded border border-slate-300 bg-panel px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100"
+          className="rounded border border-slate-300 bg-panel px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100"
         >
           + Category Group
         </button>
@@ -207,6 +277,45 @@ export default function BudgetView() {
           />
         )}
       </div>
+
+      {autoConfirm && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30" onClick={() => setAutoConfirm(null)}>
+          <div
+            className="w-96 rounded-lg border border-slate-200 bg-panel p-5 shadow-[var(--elev-popover)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-[15px] font-semibold text-slate-900">Auto-assign — {autoConfirm.label}</h2>
+            <p className="mt-1 text-[13px] text-slate-500">{autoConfirm.hint}.</p>
+            {autoConfirm.mode === 'underfunded' && (
+              <p className="mt-2 text-[13px] text-slate-600">
+                Total shortfall:{' '}
+                <span className="font-semibold text-amber-600">{fmt(-totalUnderfunded, c)}</span>
+                {autoConfirm.capRta && (
+                  <> · Ready to Assign: <span className="font-semibold">{fmt(data?.readyToAssign ?? 0, c)}</span></>
+                )}
+              </p>
+            )}
+            {autoConfirm.mode !== 'underfunded' && autoConfirm.mode !== 'resetAssigned' && (
+              <p className="mt-2 text-[12px] text-slate-400">Applies to every visible category in {monthLabel(month)}.</p>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setAutoConfirm(null)}
+                className="rounded border border-slate-300 px-3 py-1.5 text-[13px] text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => quickBudget.mutate({ mode: autoConfirm.mode, capRta: autoConfirm.capRta })}
+                disabled={quickBudget.isPending}
+                className="rounded bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:bg-accent-hover disabled:opacity-40"
+              >
+                {quickBudget.isPending ? 'Assigning…' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

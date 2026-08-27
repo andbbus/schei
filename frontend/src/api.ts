@@ -188,6 +188,16 @@ export type AutoAssignMode =
   | 'resetAvailable'
   | 'resetAssigned'
 
+export interface CsvSpec {
+  delimiter: string
+  headerRow: number
+  header: string[]
+  columns: { date: number; payee: number; amount: number | null; outflow: number | null; inflow: number | null; memo: number | null }
+  dateOrder: 'DMY' | 'MDY' | 'ISO'
+  decimal: ',' | '.'
+  confidence: number
+}
+
 export interface ScheduledRow {
   id: string
   accountId: string
@@ -210,6 +220,21 @@ export const api = {
   budget: () => get<BudgetMeta>('/budget'),
   month: (m: string) => get<MonthView>(`/months/${m}`),
   expected: (months: number) => get<ExpectedData>(`/expected?months=${months}`),
+  calendar: (month: string) =>
+    get<{
+      month: string
+      items: {
+        id: string
+        date: string
+        payee: string
+        amount: number
+        category: string | null
+        account: string | null
+        source: 'scheduled' | 'txn'
+        frequency: string | null
+        scheduledId: string | null
+      }[]
+    }>(`/calendar?month=${month.slice(0, 7)}`),
   forecast: (month: string, months: number) => get<ForecastData>(`/forecast?month=${month}&window=${months}`),
   setForecastOverride: (categoryId: string, month: string, amount: number) =>
     send<{ ok: boolean }>('PUT', `/forecast/overrides/${categoryId}`, { month, amount }),
@@ -219,6 +244,12 @@ export const api = {
     send<MonthView>('PATCH', `/months/${m}/categories/${categoryId}`, { assigned }),
   autoAssign: (m: string, categoryIds: string[], mode: AutoAssignMode) =>
     send<MonthView>('POST', `/months/${m}/auto-assign`, { categoryIds, mode }),
+  quickBudget: (m: string, mode: AutoAssignMode, capRta = false) =>
+    send<MonthView & { summary: { mode: string; capRta: boolean; changed: number; totalDelta: number } }>(
+      'POST',
+      `/months/${m}/quick-budget`,
+      { mode, capRta },
+    ),
   move: (m: string, fromCategoryId: string, toCategoryId: string, amount: number) =>
     send<MonthView>('POST', `/months/${m}/move`, { fromCategoryId, toCategoryId, amount }),
 
@@ -248,6 +279,13 @@ export const api = {
     ),
   importTrCsv: (csv: string) =>
     send<{ imported: number; skipped: number; account: string; backup: string | null }>('POST', '/import/tr-csv', { csv }),
+  importAuto: (
+    b: { csv: string; mode: 'preview' | 'commit'; accountName?: string; spec?: Record<string, unknown> },
+  ) =>
+    send<
+      | { spec: CsvSpec; count: number; net: number; preview: { date: string; payee: string; amount: number; memo: string }[] }
+      | { imported: number; skipped: number; account: string; backup: string | null }
+    >('POST', '/import/auto', b),
   payeesSimilar: () =>
     get<{ fromId: string; toId: string; fromName: string; toName: string; distance: number; similarity: number }[]>(
       '/payees/similar',
@@ -385,6 +423,7 @@ export const api = {
   shoppingEmail: (listId: string, to?: string) => send('POST', `/shopping/lists/${listId}/email`, { to }),
 
   chatStatus: () => get<{ configured: boolean; defaultModel: string }>('/chat/status'),
+  sendDigest: () => send<{ subject: string; channel: string; to: string }>('POST', '/digest/send'),
   chatSessions: () =>
     get<{ id: string; title: string; model: string; createdAt: string; lastMessage: string | null }[]>('/chat/sessions'),
   createChatSession: (b?: { title?: string; model?: string }) =>
@@ -394,7 +433,11 @@ export const api = {
   chatMessages: (id: string) =>
     get<{ id: string; role: string; content: string; createdAt: string }[]>(`/chat/sessions/${id}/messages`),
   sendChatMessage: (id: string, content: string, model?: string) =>
-    send<{ user: ChatMsg; assistant: ChatMsg }>('POST', `/chat/sessions/${id}/messages`, model ? { content, model } : { content }),
+    send<{ user: ChatMsg; assistant: ChatMsg; toolCalls: { name: string; summary: string }[] }>(
+      'POST',
+      `/chat/sessions/${id}/messages`,
+      model ? { content, model } : { content },
+    ),
   categories: () => get<GroupView[]>('/categories'),
   patchCategory: (id: string, b: Record<string, unknown>) => send('PATCH', `/categories/${id}`, b),
   createCategory: (groupId: string, name: string) => send('POST', '/categories', { groupId, name }),
@@ -453,8 +496,33 @@ export const api = {
     get<{ month: string; income: number; expense: number }[]>(`/reports/income-expense?from=${from}&to=${to}`),
   reportNetWorth: (from?: string, to?: string) =>
     get<{ month: string; assets: number; debts: number; netWorth: number }[]>(`/reports/net-worth?from=${from}&to=${to}`),
+  reportNetWorthForecast: (months: number) =>
+    get<{
+      history: { month: string; netWorth: number }[]
+      forecast: { month: string; projected: number; partial?: boolean }[]
+      lastNetWorth: number
+      horizonMonths: number
+      sufficient: boolean
+    }>(`/reports/networth-forecast?months=${months}`),
   reportAge: (from?: string, to?: string) =>
     get<{ month: string; age: number | null }[]>(`/reports/age-of-money?from=${from}&to=${to}`),
+  reportAnomalies: (days: number) =>
+    get<{
+      days: number
+      count: number
+      anomalies: {
+        txnId: string
+        date: string
+        payeeId: string | null
+        payeeName: string
+        categoryName: string | null
+        amount: number
+        mean: number
+        z: number | null
+        delta: number
+        direction: 'increase' | 'decrease'
+      }[]
+    }>(`/reports/anomalies?days=${days}`),
   reportCashflow: (months: number) =>
     get<{
       anchorRta: number

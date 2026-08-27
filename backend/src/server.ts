@@ -11,6 +11,9 @@ import goalRoutes from './routes/goals';
 import shoppingRoutes from './routes/shopping';
 import importRoutes from './routes/imports';
 import chatRoutes from './routes/chat';
+import digestRoutes from './routes/digest';
+import { startWatcher } from './watcher';
+import { startDigestScheduler } from './digest';
 
 const app = Fastify({ logger: false });
 
@@ -27,11 +30,17 @@ await app.register(goalRoutes, { prefix: '/api' });
 await app.register(shoppingRoutes, { prefix: '/api' });
 await app.register(importRoutes, { prefix: '/api' });
 await app.register(chatRoutes, { prefix: '/api' });
+await app.register(digestRoutes, { prefix: '/api' });
 
 const port = Number(process.env.PORT ?? 3001);
 app
   .listen({ port, host: '0.0.0.0' })
-  .then(() => console.log(`YNAB-clone API → http://localhost:${port}`))
+  .then(() => {
+    console.log(`YNAB-clone API → http://localhost:${port}`);
+    // Optional daemons (both env-gated, both no-ops when unset):
+    if (process.env.IMPORT_WATCH_DIR) startWatcher(process.env.IMPORT_WATCH_DIR);
+    startDigestScheduler();
+  })
   .catch((err) => {
     console.error(err);
     process.exit(1);

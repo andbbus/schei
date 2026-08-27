@@ -236,6 +236,44 @@ export async function test() {
   const malformed = await app.inject({ method: 'POST', url: `/api/ops/${bad.id}/undo` });
   assert.equal(malformed.statusCode, 409);
 
+  // 11. quick-budget: underfunded capped at RTA, largest shortfall first
+  await prisma.category.update({ where: { id: catA }, data: { goalType: 'MF', goalTarget: 80000 } });
+  await prisma.category.update({ where: { id: catB }, data: { goalType: 'MF', goalTarget: 50000 } });
+  await app.inject({ method: 'PATCH', url: `/api/months/${month}/categories/${catA}`, payload: { assigned: 0 } });
+  await app.inject({ method: 'PATCH', url: `/api/months/${month}/categories/${catB}`, payload: { assigned: 0 } });
+  const before = (await app.inject({ method: 'GET', url: `/api/months/${month}` })).json() as { readyToAssign: number };
+  const rtaBefore = before.readyToAssign;
+  const qb = await app.inject({
+    method: 'POST',
+    url: `/api/months/${month}/quick-budget`,
+    payload: { mode: 'underfunded', capRta: true },
+  });
+  assert.equal(qb.statusCode, 200, 'quick-budget: ' + qb.body.slice(0, 400));
+  const aVal = await assigned(catA);
+  const bVal = await assigned(catB);
+  if (rtaBefore >= 130000) {
+    assert.equal(aVal, 80000);
+    assert.equal(bVal, 50000);
+  } else if (rtaBefore >= 80000) {
+    assert.equal(aVal, 80000);
+    assert.equal(bVal, rtaBefore - 80000);
+  } else {
+    assert.equal(aVal, Math.max(0, rtaBefore), 'largest shortfall first, capped at RTA');
+    assert.equal(bVal, 0);
+  }
+  const qbBody = qb.json() as { summary: { totalDelta: number }; readyToAssign: number };
+  assert.equal(qbBody.summary.totalDelta, aVal + bVal);
+  assert.equal(qbBody.readyToAssign, rtaBefore - (aVal + bVal));
+  // plain mode without cap applies to every visible category in one op
+  const qb2 = await app.inject({
+    method: 'POST',
+    url: `/api/months/${month}/quick-budget`,
+    payload: { mode: 'resetAssigned' },
+  });
+  assert.equal(qb2.statusCode, 200);
+  assert.equal(await assigned(catA), 0);
+  assert.equal(await assigned(catB), 0);
+
   await app.close();
   await prisma.$disconnect();
   rmSync(DB, { force: true });

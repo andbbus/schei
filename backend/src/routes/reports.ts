@@ -5,6 +5,7 @@ import { monthOf } from '../engine/budget';
 import { computeAgeOfMoney } from '../engine/ageOfMoney';
 import { categoryPostings } from '../engine/postings';
 import { projectCashflow } from '../engine/cashflow';
+import { detectAnomalies, AnomalyInputTxn } from '../engine/anomalies';
 import { TargetInput } from '../engine/targets';
 import { materializeDue } from './register';
 
@@ -87,6 +88,62 @@ export default async function reportRoutes(app: FastifyInstance) {
       });
   });
 
+  // Anomalies: outflows that deviate sharply from the same payee's own history
+  // (spikes and unusual drops). Posting-aware: split subtransactions are
+  // separate samples under their own category; transfers excluded.
+  app.get('/reports/anomalies', async (req) => {
+    const q = req.query as { days?: string };
+    const days = Math.max(1, Math.min(365, Number(q.days) || 90));
+    const budget = await getBudgetOrThrow();
+    const { txns, accounts, categories } = await loadComputation(budget.id);
+    const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+
+    const [payees] = await Promise.all([
+      prisma.payee.findMany({ where: { budgetId: budget.id }, select: { id: true, name: true } }),
+    ]);
+    const payeeName = new Map(payees.map((p) => [p.id, p.name]));
+    const catMeta = new Map(categories.map((c) => [c.id, c]));
+    const onBudget = new Map(accounts.map((a) => [a.id, a.onBudget]));
+
+    const samples: AnomalyInputTxn[] = [];
+    for (const t of txns) {
+      if (t.date > today() || !onBudget.get(t.accountId)) continue;
+      if (t.transferAccountId) continue;
+      const payee = t.payeeId ? (payeeName.get(t.payeeId) ?? '') : '';
+      const subs = t.subtransactions ?? [];
+      if (subs.length > 0) {
+        for (const s of subs) {
+          const c = s.categoryId ? catMeta.get(s.categoryId) : null;
+          if (!c || c.isInflow) continue;
+          samples.push({
+            id: s.id ?? t.id,
+            date: t.date,
+            amount: s.amount,
+            payeeId: t.payeeId ?? null,
+            payeeName: payee,
+            categoryId: c.id,
+            categoryName: c.name,
+          });
+        }
+      } else {
+        const c = t.categoryId ? catMeta.get(t.categoryId) : null;
+        if (!c || c.isInflow) continue;
+        samples.push({
+          id: t.id,
+          date: t.date,
+          amount: t.amount,
+          payeeId: t.payeeId ?? null,
+          payeeName: payee,
+          categoryId: c.id,
+          categoryName: c.name,
+        });
+      }
+    }
+
+    const anomalies = detectAnomalies(samples, { recentFrom: cutoff });
+    return { days, count: anomalies.length, anomalies };
+  });
+
   // Age of Money trend (computed at each month-end).
   app.get('/reports/age-of-money', async (req) => {
     const q = req.query as { from?: string; to?: string };
@@ -115,57 +172,106 @@ export default async function reportRoutes(app: FastifyInstance) {
     }
     const budget = await getBudgetOrThrow();
     await materializeDue(budget.id); // schedules due today must land in history first
-    const { txns, accounts, categories, comp } = await loadComputation(budget.id);
-    const todayStr = today();
-    const inflowCatId = categories.find((c) => c.isInflow)?.id ?? null;
-    const paymentCatIds = new Set(categories.filter((c) => c.paymentAccountId).map((c) => c.id));
-    const payees = await prisma.payee.findMany({ where: { budgetId: budget.id }, select: { id: true, name: true } });
-    const systemPayeeIds = new Set(
-      payees
-        .filter((p) => ['Starting Balance', 'Manual Balance Adjustment', 'Reconciliation Balance Adjustment'].includes(p.name))
-        .map((p) => p.id),
-    );
-    const scheduled = await prisma.scheduledTransaction.findMany({
-      where: { budgetId: budget.id, deleted: false },
-      include: { payee: true },
+    return runProjection(budget.id, months);
+  });
+
+  // Net-worth forecast: the actual net-worth series extended with the cash-flow
+  // projection's expected net — "at this pace you reach X by month M".
+  app.get('/reports/networth-forecast', async (req, reply) => {
+    const q = req.query as { months?: string };
+    const months = Math.max(1, Math.min(36, Number(q.months) || 12));
+    const budget = await getBudgetOrThrow();
+    await materializeDue(budget.id);
+    const { txns, accounts, months: allMonths } = await loadComputation(budget.id);
+    const cutoff = today();
+
+    // actual net worth series (same math as /reports/net-worth, untrimmed)
+    const delta: Record<string, Record<string, number>> = {};
+    for (const t of txns) {
+      if (t.date > cutoff) continue;
+      const m = monthOf(t.date);
+      (delta[t.accountId] ??= {})[m] = (delta[t.accountId]?.[m] ?? 0) + t.amount;
+    }
+    const running: Record<string, number> = {};
+    for (const a of accounts) running[a.id] = 0;
+    const history = allMonths.map((m) => {
+      let net = 0;
+      for (const a of accounts) {
+        running[a.id] += delta[a.id]?.[m] ?? 0;
+        net += running[a.id];
+      }
+      return { month: m, netWorth: net };
     });
-    const overrides = await prisma.projectedOverride.findMany({ where: { budgetId: budget.id } });
-    const targetCats: TargetInput[] = categories
-      .filter((c) => c.goalType)
-      .map((c) => ({
-        goalType: c.goalType as TargetInput['goalType'],
-        goalTarget: c.goalTarget,
-        goalCadence: c.goalCadence,
-        goalDay: c.goalDay,
-        goalTargetMonth: c.goalTargetMonth,
-        goalNeedsWholeAmount: c.goalNeedsWholeAmount,
-      }));
-    const result = projectCashflow({
-      comp,
-      currentMonth: monthOf(todayStr),
+
+    const projection = await runProjection(budget.id, months);
+    let cum = history[history.length - 1]?.netWorth ?? 0;
+    const forecast = projection.rows.map((r) => {
+      cum += r.projectedNet;
+      return { month: r.month, projected: Math.round(cum), partial: r.partial };
+    });
+
+    return {
+      history,
+      forecast,
+      lastNetWorth: history[history.length - 1]?.netWorth ?? 0,
       horizonMonths: months,
-      today: todayStr,
-      accounts,
-      txns,
-      inflowCatId,
-      paymentCatIds,
-      systemPayeeIds,
-      targetCats,
-      scheduled: scheduled.map((s) => ({
-        id: s.id,
-        accountId: s.accountId,
-        payeeId: s.payeeId,
-        payee: s.payee?.name ?? null,
-        categoryId: s.categoryId,
-        amount: s.amount,
-        frequency: s.frequency,
-        nextDate: s.nextDate,
-        anchorDay: s.anchorDay,
-        endMonth: s.endMonth,
-        transferAccountId: s.transferAccountId,
-      })),
-      overrides: overrides.map((o) => ({ categoryId: o.categoryId, month: o.month, amount: o.amount })),
-    });
-    return result;
+      sufficient: projection.sufficient,
+    };
+  });
+}
+
+// Shared input assembly for the cash-flow projection (used by /reports/cashflow
+// and /reports/networth-forecast).
+async function runProjection(budgetId: string, months: number) {
+  const { txns, accounts, categories, comp } = await loadComputation(budgetId);
+  const todayStr = today();
+  const inflowCatId = categories.find((c) => c.isInflow)?.id ?? null;
+  const paymentCatIds = new Set(categories.filter((c) => c.paymentAccountId).map((c) => c.id));
+  const payees = await prisma.payee.findMany({ where: { budgetId }, select: { id: true, name: true } });
+  const systemPayeeIds = new Set(
+    payees
+      .filter((p) => ['Starting Balance', 'Manual Balance Adjustment', 'Reconciliation Balance Adjustment'].includes(p.name))
+      .map((p) => p.id),
+  );
+  const scheduled = await prisma.scheduledTransaction.findMany({
+    where: { budgetId, deleted: false },
+    include: { payee: true },
+  });
+  const overrides = await prisma.projectedOverride.findMany({ where: { budgetId } });
+  const targetCats: TargetInput[] = categories
+    .filter((c) => c.goalType)
+    .map((c) => ({
+      goalType: c.goalType as TargetInput['goalType'],
+      goalTarget: c.goalTarget,
+      goalCadence: c.goalCadence,
+      goalDay: c.goalDay,
+      goalTargetMonth: c.goalTargetMonth,
+      goalNeedsWholeAmount: c.goalNeedsWholeAmount,
+    }));
+  return projectCashflow({
+    comp,
+    currentMonth: monthOf(todayStr),
+    horizonMonths: months,
+    today: todayStr,
+    accounts,
+    txns,
+    inflowCatId,
+    paymentCatIds,
+    systemPayeeIds,
+    targetCats,
+    scheduled: scheduled.map((s) => ({
+      id: s.id,
+      accountId: s.accountId,
+      payeeId: s.payeeId,
+      payee: s.payee?.name ?? null,
+      categoryId: s.categoryId,
+      amount: s.amount,
+      frequency: s.frequency,
+      nextDate: s.nextDate,
+      anchorDay: s.anchorDay,
+      endMonth: s.endMonth,
+      transferAccountId: s.transferAccountId,
+    })),
+    overrides: overrides.map((o) => ({ categoryId: o.categoryId, month: o.month, amount: o.amount })),
   });
 }

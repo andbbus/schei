@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../db';
 import { getBudgetOrThrow, loadComputation, clampMonth, today } from '../engineLoad';
 import { computeTarget, GoalType } from '../engine/targets';
-import { autoAssignAmount, AutoAssignMode, CatMonth } from '../engine/autoAssign';
+import { autoAssignAmount, AutoAssignMode, CatMonth, planUnderfunded } from '../engine/autoAssign';
 import { materializeDue } from './register';
 import { logOps } from './ops-helpers';
 
@@ -86,6 +86,81 @@ async function monthPayload(budgetId: string, month: string) {
     totalActivity: comp.activityByMonth[month] ?? 0,
     currency: { symbol: budget.currencySymbol, digits: budget.decimalDigits, locale: budget.locale },
     groups: groupPayloads,
+  };
+}
+
+// Shared by the POST /months/:month/quick-budget route and the assistant's
+// cover_overspending tool. Applies one auto-assign mode to every visible
+// category in the month and logs a single autoAssign op.
+export async function runQuickBudget(budgetId: string, month: string, mode: AutoAssignMode, capRta: boolean) {
+  const { comp, categories } = await loadComputation(budgetId);
+
+  const visible = categories.filter((c) => !c.hidden && !c.isInflow);
+  const hist = new Map<string, Record<string, CatMonth>>();
+  for (const mc of comp.monthCategories) {
+    const h = hist.get(mc.categoryId) ?? {};
+    h[mc.month] = { assigned: mc.assigned, activity: mc.activity, available: mc.available };
+    hist.set(mc.categoryId, h);
+  }
+
+  const underfunded = new Map<string, number>();
+  for (const c of visible) {
+    const cur = hist.get(c.id)?.[month] ?? { assigned: 0, activity: 0, available: 0 };
+    const target = computeTarget(
+      {
+        goalType: (c.goalType as GoalType) ?? null,
+        goalTarget: c.goalTarget ?? null,
+        goalCadence: c.goalCadence ?? null,
+        goalDay: c.goalDay ?? null,
+        goalTargetMonth: c.goalTargetMonth ?? null,
+        goalNeedsWholeAmount: c.goalNeedsWholeAmount ?? null,
+      },
+      { month, assignedThisMonth: cur.assigned, available: cur.available },
+    );
+    underfunded.set(c.id, target.underfunded);
+  }
+
+  // Planned absolute next value per category.
+  const planned = new Map<string, number>();
+  if (mode === 'underfunded' && capRta) {
+    const rta = comp.rtaByMonth[month] ?? 0;
+    const plan = planUnderfunded(
+      [...underfunded.entries()].map(([categoryId, u]) => ({ categoryId, underfunded: u })),
+      rta,
+    );
+    for (const { categoryId, add } of plan) {
+      const cur = hist.get(categoryId)?.[month]?.assigned ?? 0;
+      planned.set(categoryId, cur + add);
+    }
+  } else {
+    for (const c of visible) {
+      const h = hist.get(c.id) ?? {};
+      planned.set(c.id, Math.round(autoAssignAmount(mode, month, h, underfunded.get(c.id) ?? 0)));
+    }
+  }
+
+  const changed: { categoryId: string; month: string; prev: number; next: number }[] = [];
+  await prisma.$transaction(async (tx) => {
+    for (const [categoryId, next] of planned) {
+      const existing = await tx.monthCategory.findUnique({ where: { categoryId_month: { categoryId, month } } });
+      const prev = existing?.assigned ?? 0;
+      if (prev !== next) {
+        await tx.monthCategory.upsert({
+          where: { categoryId_month: { categoryId, month } },
+          update: { assigned: next },
+          create: { budgetId, categoryId, month, assigned: next },
+        });
+        changed.push({ categoryId, month, prev, next });
+      }
+    }
+    if (changed.length > 0) await logOps(tx, budgetId, 'autoAssign', changed);
+  });
+
+  return {
+    mode,
+    capRta,
+    changed: changed.length,
+    totalDelta: changed.reduce((s, c) => s + (c.next - c.prev), 0),
   };
 }
 
@@ -201,6 +276,18 @@ export default async function budgetRoutes(app: FastifyInstance) {
       if (changed.length > 0) await logOps(tx, budget.id, 'autoAssign', changed);
     });
     return monthPayload(budget.id, month);
+  });
+
+  // Quick budget: apply one auto-assign mode to EVERY visible category in the
+  // month (the toolbar "Auto-assign" dropdown). With capRta (underfunded mode
+  // only) the plan is clamped to Ready-to-Assign, largest shortfall first.
+  app.post('/months/:month/quick-budget', async (req) => {
+    const { month } = req.params as { month: string };
+    const { mode, capRta } = req.body as { mode: AutoAssignMode; capRta?: boolean };
+    const budget = await getBudgetOrThrow();
+    const result = await runQuickBudget(budget.id, month, mode, !!capRta);
+    const payload = await monthPayload(budget.id, month);
+    return { ...payload, summary: result };
   });
 
   // Move available money between two categories in a month (adjusts assigned).
