@@ -4,6 +4,7 @@ import { getBudgetOrThrow, loadComputation, clampMonth, today } from '../engineL
 import { computeTarget, GoalType } from '../engine/targets';
 import { autoAssignAmount, AutoAssignMode, CatMonth } from '../engine/autoAssign';
 import { materializeDue } from './register';
+import { logOps } from './ops-helpers';
 
 // Build the full month view: groups → categories with assigned/activity/available
 // + per-category target state, plus Ready-to-Assign for the month.
@@ -136,10 +137,18 @@ export default async function budgetRoutes(app: FastifyInstance) {
     const { month, categoryId } = req.params as { month: string; categoryId: string };
     const { assigned } = req.body as { assigned: number };
     const budget = await getBudgetOrThrow();
-    await prisma.monthCategory.upsert({
-      where: { categoryId_month: { categoryId, month } },
-      update: { assigned: Math.round(assigned) },
-      create: { budgetId: budget.id, categoryId, month, assigned: Math.round(assigned) },
+    const next = Math.round(assigned);
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.monthCategory.findUnique({ where: { categoryId_month: { categoryId, month } } });
+      const prev = existing?.assigned ?? 0;
+      if (prev !== next) {
+        await tx.monthCategory.upsert({
+          where: { categoryId_month: { categoryId, month } },
+          update: { assigned: next },
+          create: { budgetId: budget.id, categoryId, month, assigned: next },
+        });
+        await logOps(tx, budget.id, 'assign', [{ categoryId, month, prev, next }]);
+      }
     });
     return monthPayload(budget.id, month);
   });
@@ -159,29 +168,38 @@ export default async function budgetRoutes(app: FastifyInstance) {
       hist.set(mc.categoryId, h);
     }
 
-    for (const categoryId of categoryIds) {
-      const c = categories.find((x) => x.id === categoryId);
-      if (!c) continue;
-      const h = hist.get(categoryId) ?? {};
-      const cur = h[month] ?? { assigned: 0, activity: 0, available: 0 };
-      const target = computeTarget(
-        {
-          goalType: (c.goalType as GoalType) ?? null,
-          goalTarget: c.goalTarget ?? null,
-          goalCadence: c.goalCadence ?? null,
-          goalDay: c.goalDay ?? null,
-          goalTargetMonth: c.goalTargetMonth ?? null,
-          goalNeedsWholeAmount: c.goalNeedsWholeAmount ?? null,
-        },
-        { month, assignedThisMonth: cur.assigned, available: cur.available },
-      );
-      const next = autoAssignAmount(mode, month, h, target.underfunded);
-      await prisma.monthCategory.upsert({
-        where: { categoryId_month: { categoryId, month } },
-        update: { assigned: Math.round(next) },
-        create: { budgetId: budget.id, categoryId, month, assigned: Math.round(next) },
-      });
-    }
+    const changed: { categoryId: string; month: string; prev: number; next: number }[] = [];
+    await prisma.$transaction(async (tx) => {
+      for (const categoryId of categoryIds) {
+        const c = categories.find((x) => x.id === categoryId);
+        if (!c) continue;
+        const h = hist.get(categoryId) ?? {};
+        const cur = h[month] ?? { assigned: 0, activity: 0, available: 0 };
+        const target = computeTarget(
+          {
+            goalType: (c.goalType as GoalType) ?? null,
+            goalTarget: c.goalTarget ?? null,
+            goalCadence: c.goalCadence ?? null,
+            goalDay: c.goalDay ?? null,
+            goalTargetMonth: c.goalTargetMonth ?? null,
+            goalNeedsWholeAmount: c.goalNeedsWholeAmount ?? null,
+          },
+          { month, assignedThisMonth: cur.assigned, available: cur.available },
+        );
+        const next = Math.round(autoAssignAmount(mode, month, h, target.underfunded));
+        const existing = await tx.monthCategory.findUnique({ where: { categoryId_month: { categoryId, month } } });
+        const prev = existing?.assigned ?? 0;
+        if (prev !== next) {
+          await tx.monthCategory.upsert({
+            where: { categoryId_month: { categoryId, month } },
+            update: { assigned: next },
+            create: { budgetId: budget.id, categoryId, month, assigned: next },
+          });
+          changed.push({ categoryId, month, prev, next });
+        }
+      }
+      if (changed.length > 0) await logOps(tx, budget.id, 'autoAssign', changed);
+    });
     return monthPayload(budget.id, month);
   });
 
@@ -195,20 +213,25 @@ export default async function budgetRoutes(app: FastifyInstance) {
     };
     const budget = await getBudgetOrThrow();
     const amt = Math.round(amount);
-    const adjust = async (categoryId: string, delta: number) => {
-      const existing = await prisma.monthCategory.findUnique({
-        where: { categoryId_month: { categoryId, month } },
-      });
-      const base = existing?.assigned ?? 0;
-      await prisma.monthCategory.upsert({
-        where: { categoryId_month: { categoryId, month } },
-        update: { assigned: base + delta },
-        create: { budgetId: budget.id, categoryId, month, assigned: base + delta },
-      });
-    };
-    // Moving FROM "Ready to Assign" (id null/sentinel) just assigns to the target.
-    if (fromCategoryId && fromCategoryId !== 'rta') await adjust(fromCategoryId, -amt);
-    if (toCategoryId && toCategoryId !== 'rta') await adjust(toCategoryId, amt);
+    await prisma.$transaction(async (tx) => {
+      const adjust = async (categoryId: string, delta: number) => {
+        const existing = await tx.monthCategory.findUnique({
+          where: { categoryId_month: { categoryId, month } },
+        });
+        const base = existing?.assigned ?? 0;
+        await tx.monthCategory.upsert({
+          where: { categoryId_month: { categoryId, month } },
+          update: { assigned: base + delta },
+          create: { budgetId: budget.id, categoryId, month, assigned: base + delta },
+        });
+      };
+      // Moving FROM "Ready to Assign" (id null/sentinel) just assigns to the target.
+      if (fromCategoryId && fromCategoryId !== 'rta') await adjust(fromCategoryId, -amt);
+      if (toCategoryId && toCategoryId !== 'rta') await adjust(toCategoryId, amt);
+      if (amt !== 0) {
+        await logOps(tx, budget.id, 'move', { month, fromCategoryId, toCategoryId, amount: amt });
+      }
+    });
     return monthPayload(budget.id, month);
   });
 
@@ -236,6 +259,15 @@ export default async function budgetRoutes(app: FastifyInstance) {
     ];
     const data: Record<string, unknown> = {};
     for (const k of allowed) if (k in body) data[k] = body[k];
+    if (body.hidden !== undefined) {
+      const budget = await getBudgetOrThrow();
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.category.findUniqueOrThrow({ where: { id } });
+        await tx.category.update({ where: { id }, data });
+        await logOps(tx, budget.id, 'hideCategory', { categoryId: id, prevHidden: existing.hidden });
+      });
+      return prisma.category.findUniqueOrThrow({ where: { id } });
+    }
     return prisma.category.update({ where: { id }, data });
   });
 
@@ -251,21 +283,35 @@ export default async function budgetRoutes(app: FastifyInstance) {
   // forces reassignment; we just say "hide it instead").
   app.delete('/categories/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    const [txns, subs, assigned] = await Promise.all([
+    const budget = await getBudgetOrThrow();
+    const [txns, subs, assigned, rules] = await Promise.all([
       prisma.transaction.count({ where: { categoryId: id, deleted: false } }),
       prisma.subtransaction.count({ where: { categoryId: id, transaction: { deleted: false } } }),
       prisma.monthCategory.count({ where: { categoryId: id, assigned: { not: 0 } } }),
+      prisma.payeeRule.count({ where: { categoryId: id } }),
     ]);
+    if (rules > 0) {
+      return reply.code(409).send({ error: `Category is used by ${rules} payee rule(s) — delete or retarget the rules first.` });
+    }
     if (txns + subs + assigned > 0) {
       return reply.code(409).send({ error: 'Category has transactions or assigned money — hide it instead.' });
     }
-    return prisma.category.update({ where: { id }, data: { deleted: true } });
+    await prisma.$transaction(async (tx) => {
+      await tx.category.update({ where: { id }, data: { deleted: true } });
+      await logOps(tx, budget.id, 'deleteCategory', { id });
+    });
+    return { ok: true };
   });
 
   app.delete('/category-groups/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
+    const budget = await getBudgetOrThrow();
     const live = await prisma.category.count({ where: { groupId: id, deleted: false } });
     if (live > 0) return reply.code(409).send({ error: 'Group still has categories — delete or move them first.' });
-    return prisma.categoryGroup.update({ where: { id }, data: { deleted: true } });
+    await prisma.$transaction(async (tx) => {
+      await tx.categoryGroup.update({ where: { id }, data: { deleted: true } });
+      await logOps(tx, budget.id, 'deleteGroup', { id });
+    });
+    return { ok: true };
   });
 }

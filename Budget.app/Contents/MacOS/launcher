@@ -1,0 +1,10 @@
+#!/bin/bash
+# YNAB Clone launcher: opens start.command in Terminal so server logs are
+# visible and closing the window (or Ctrl-C) stops the servers.
+# Works from inside the repo OR if the .app is copied to /Applications:
+# falls back to the hardcoded repo path. ponytail: single-machine app.
+
+REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
+[ -f "$REPO/start.command" ] || REPO="/Users/user/Projects/ynab-clone"
+
+open -a Terminal "$REPO/start.command"

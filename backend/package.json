@@ -5,20 +5,23 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "test": "tsx src/engine/budget.test.ts",
+    "test": "tsx src/engine/budget.test.ts && tsx src/engine/rules.test.ts && tsx src/engine/payeeRules.test.ts && tsx src/engine/suggestions.test.ts && tsx src/engine/cashflow.test.ts && tsx src/engine/similarity.test.ts && tsx src/routes/ops.test.ts && tsx src/routes/rules.test.ts && tsx src/routes/tools.test.ts && tsx src/routes/debts.test.ts && tsx src/routes/bulk.test.ts && tsx src/routes/payees.test.ts && tsx src/routes/goals.test.ts && tsx src/engine/groceries.test.ts && tsx src/routes/expected.test.ts && tsx src/routes/forecast.test.ts",
     "oracle": "tsx src/oracle.ts",
     "seed": "tsx src/seed.ts",
     "import": "tsx src/importYnab.ts",
+    "import:csv": "tsx src/importCsv.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@prisma/client": "^6.2.1",
-    "fastify": "^5.2.1"
+    "fastify": "^5.2.1",
+    "nodemailer": "^9.0.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@types/nodemailer": "^8.0.1",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"

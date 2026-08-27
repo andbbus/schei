@@ -29,7 +29,7 @@ export async function loadComputation(budgetId: string, asOf = today()) {
   const [budget, accounts, categories, monthCats, txnRows] = await Promise.all([
     prisma.budget.findUniqueOrThrow({ where: { id: budgetId } }),
     prisma.account.findMany({ where: { budgetId }, orderBy: { sortOrder: 'asc' } }),
-    prisma.category.findMany({ where: { budgetId }, orderBy: { sortOrder: 'asc' } }),
+    prisma.category.findMany({ where: { budgetId, deleted: false }, orderBy: { sortOrder: 'asc' } }),
     prisma.monthCategory.findMany({ where: { budgetId } }),
     prisma.transaction.findMany({
       where: { budgetId, deleted: false },
@@ -43,9 +43,13 @@ export async function loadComputation(budgetId: string, asOf = today()) {
     amount: t.amount,
     accountId: t.accountId,
     categoryId: t.categoryId,
+    payeeId: t.payeeId,
+    memo: t.memo,
+    flagColor: t.flagColor,
     cleared: t.cleared as EngineTxn['cleared'],
     transferAccountId: t.transferAccountId,
     subtransactions: t.subtransactions.map((s) => ({
+      id: s.id,
       amount: s.amount,
       categoryId: s.categoryId,
       transferAccountId: s.transferAccountId,

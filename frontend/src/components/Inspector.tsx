@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { CategoryView, AutoAssignMode } from '../api'
 import { api, errMsg } from '../api'
-import { fmt, parseAmount, type Currency } from '../format'
+import { fmt, parseAmount, normalizeAmount, type Currency } from '../format'
 
 const AUTO: { label: string; mode: AutoAssignMode }[] = [
   { label: 'Underfunded', mode: 'underfunded' },
@@ -29,6 +29,7 @@ export default function Inspector({
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['month', month] })
     qc.invalidateQueries({ queryKey: ['budget'] })
+    qc.invalidateQueries({ queryKey: ['ops'] })
   }
   const auto = useMutation({
     mutationFn: ({ ids, mode }: { ids: string[]; mode: AutoAssignMode }) => api.autoAssign(month, ids, mode),
@@ -37,8 +38,8 @@ export default function Inspector({
 
   if (selected.length === 0) {
     return (
-      <div className="flex h-full w-80 shrink-0 flex-col border-l border-slate-200 bg-white p-4">
-        <div className="text-xs tracking-wide text-slate-400 uppercase">Ready to Assign</div>
+      <div className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
+        <div className="text-[11px] font-semibold tracking-[0.06em] text-slate-400 uppercase">Ready to Assign</div>
         <div className={`tnum mt-1 text-2xl font-semibold ${readyToAssign < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
           {fmt(readyToAssign, c)}
         </div>
@@ -54,11 +55,11 @@ export default function Inspector({
   const single = selected.length === 1 ? selected[0] : null
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-slate-200 bg-white p-4">
+    <div className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
       {single ? (
         <div>
           <div className="text-[15px] font-semibold text-slate-800">{single.name}</div>
-          <div className="mt-2 text-xs tracking-wide text-slate-400 uppercase">Available</div>
+          <div className="mt-2 text-[11px] font-semibold tracking-[0.06em] text-slate-400 uppercase">Available</div>
           <div className={`tnum text-2xl font-semibold ${single.available < 0 ? 'text-red-600' : 'text-slate-800'}`}>
             {fmt(single.available, c)}
           </div>
@@ -73,13 +74,13 @@ export default function Inspector({
       {single && <TargetEditor cat={single} c={c} onSaved={refresh} />}
 
       <div>
-        <div className="mb-2 text-xs tracking-wide text-slate-400 uppercase">Auto-Assign</div>
+        <div className="mb-2 text-[11px] font-semibold tracking-[0.06em] text-slate-400 uppercase">Auto-Assign</div>
         <div className="grid grid-cols-2 gap-1.5">
           {AUTO.map((a) => (
             <button
               key={a.mode}
               onClick={() => auto.mutate({ ids, mode: a.mode })}
-              className="rounded border border-slate-200 px-2 py-1.5 text-[12px] text-slate-700 hover:bg-slate-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[12px] text-slate-700 transition-colors hover:bg-slate-100"
             >
               {a.label}
             </button>
@@ -190,6 +191,7 @@ function TargetEditor({ cat, c, onSaved }: { cat: CategoryView; c: Currency; onS
         placeholder="Amount"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
+        onBlur={(e) => setAmount(normalizeAmount(e.target.value))}
         className="mb-2 w-full rounded border border-slate-300 px-2 py-1 text-sm"
       />
       {type === 'TBD' && (

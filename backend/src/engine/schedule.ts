@@ -18,9 +18,9 @@ function clampDay(month: string, day: number): string {
 }
 
 // Next occurrence after `date`, or null when the schedule is exhausted.
-// ponytail: monthly anchor = day of the current nextDate, so a 31st schedule
-// drifts to 28/30 after clamping — store an anchorDay if it ever matters.
-export function nextOccurrence(frequency: string, date: string): string | null {
+// `anchorDay` (1-31) pins monthly occurrences to a stable day-of-month,
+// avoiding the 31st → 28th drift of the day-of-nextDate fallback.
+export function nextOccurrence(frequency: string, date: string, anchorDay?: number): string | null {
   switch (frequency as Frequency) {
     case 'once':
       return null;
@@ -29,10 +29,11 @@ export function nextOccurrence(frequency: string, date: string): string | null {
     case 'everyOtherWeek':
       return addDays(date, 14);
     case 'monthly':
+      if (anchorDay) return clampDay(addMonths(date.slice(0, 7) + '-01', 1), anchorDay);
       return clampDay(addMonths(date.slice(0, 7) + '-01', 1), Number(date.slice(8, 10)));
     case 'yearly': {
       const next = `${Number(date.slice(0, 4)) + 1}${date.slice(4, 7)}`;
-      return clampDay(next.slice(0, 7) + '-01', Number(date.slice(8, 10)));
+      return clampDay(next.slice(0, 7) + '-01', anchorDay ?? Number(date.slice(8, 10)));
     }
     default:
       return null;

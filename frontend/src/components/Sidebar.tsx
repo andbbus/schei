@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BudgetMeta, AccountLite } from '../api'
 import { api } from '../api'
-import { fmt, parseAmount, type Currency } from '../format'
+import { fmt, parseAmount, normalizeAmount, type Currency } from '../format'
 
 function NavItem({ to, label, icon, end }: { to: string; label: string; icon: string; end?: boolean }) {
   return (
@@ -11,12 +11,12 @@ function NavItem({ to, label, icon, end }: { to: string; label: string; icon: st
       to={to}
       end={end}
       className={({ isActive }) =>
-        `flex items-center gap-2 rounded px-3 py-1.5 text-sm ${
-          isActive ? 'bg-white/15 text-white font-medium' : 'text-indigo-100 hover:bg-white/10'
+        `flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] transition-colors duration-100 ${
+          isActive ? 'bg-white/15 font-semibold text-white' : 'font-medium text-indigo-100 hover:bg-white/10'
         }`
       }
     >
-      <span className="w-4 text-center">{icon}</span>
+      <span className="w-4 text-center opacity-85">{icon}</span>
       {label}
     </NavLink>
   )
@@ -27,13 +27,13 @@ function AccountItem({ a, c }: { a: AccountLite; c: Currency }) {
     <NavLink
       to={`/accounts/${a.id}`}
       className={({ isActive }) =>
-        `flex items-center justify-between rounded px-3 py-1 text-[13px] ${
+        `flex items-center justify-between rounded-md px-2 py-[6px] text-[13px] transition-colors duration-100 ${
           isActive ? 'bg-white/15 text-white' : 'text-indigo-100 hover:bg-white/10'
         }`
       }
     >
-      <span className="truncate pr-2">{a.name}</span>
-      <span className={`tnum shrink-0 ${a.working < 0 ? 'text-red-300' : 'text-indigo-200'}`}>{fmt(a.working, c)}</span>
+      <span className="truncate pr-2 text-[#e4e5f6]">{a.name}</span>
+      <span className={`tnum shrink-0 font-medium ${a.working < 0 ? 'text-[#ff9a9a]' : 'text-white'}`}>{fmt(a.working, c)}</span>
     </NavLink>
   )
 }
@@ -59,39 +59,54 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
   })
 
   return (
-    <aside className="sidebar-grad flex h-full w-64 shrink-0 flex-col text-indigo-100">
-      <div className="px-4 py-4">
-        <div className="text-[15px] font-semibold text-white">{meta.budget.name}</div>
-        <div className="text-xs text-indigo-300">Owner</div>
+    <aside className="sidebar-grad print-hide flex h-full w-60 shrink-0 flex-col gap-5 overflow-y-auto px-3 py-5 pb-4 text-indigo-100">
+      <div className="flex items-center gap-2.5 px-2">
+        <div className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-md bg-emerald-500 text-xs font-bold text-[#06301f]">
+          yc
+        </div>
+        <div>
+          <div className="text-[14px] font-semibold tracking-tight text-white">{meta.budget.name}</div>
+          <div className="text-[11px] text-[#b9bbe0]">Owner</div>
+        </div>
       </div>
 
-      <nav className="space-y-0.5 px-2">
+      <nav className="flex flex-col gap-0.5">
         <NavItem to="/" label="Budget" icon="📊" end />
         <NavItem to="/reflect" label="Reflect" icon="📈" />
+        <NavItem to="/debts" label="Debts" icon="📉" />
+        <NavItem to="/goals" label="Goals" icon="🎯" />
+        <NavItem to="/subscriptions" label="Subscriptions" icon="🔁" />
+        <NavItem to="/shopping" label="Shopping" icon="🛒" />
       </nav>
 
-      <div className="mt-5 mb-1 flex justify-between px-4 text-[11px] tracking-wide text-indigo-300 uppercase">
-        <span>Budget</span>
-        <span className="tnum">{fmt(total(budgetAccts), c)}</span>
-      </div>
-      <div className="space-y-px overflow-y-auto px-2">
-        {budgetAccts.map((a) => (
-          <AccountItem key={a.id} a={a} c={c} />
-        ))}
+      <div className="flex flex-col gap-0.5">
+        <div className="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-[0.06em] text-[#b9bbe0] uppercase">
+          <div className="flex justify-between">
+            <span>Budget</span>
+            <span className="tnum">{fmt(total(budgetAccts), c)}</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-px">
+          {budgetAccts.map((a) => (
+            <AccountItem key={a.id} a={a} c={c} />
+          ))}
+        </div>
       </div>
 
       {trackingAccts.length > 0 && (
-        <>
-          <div className="mt-4 mb-1 flex justify-between px-4 text-[11px] tracking-wide text-indigo-300 uppercase">
-            <span>Tracking</span>
-            <span className="tnum">{fmt(total(trackingAccts), c)}</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-[0.06em] text-[#b9bbe0] uppercase">
+            <div className="flex justify-between">
+              <span>Tracking</span>
+              <span className="tnum">{fmt(total(trackingAccts), c)}</span>
+            </div>
           </div>
-          <div className="space-y-px px-2">
+          <div className="flex flex-col gap-px">
             {trackingAccts.map((a) => (
               <AccountItem key={a.id} a={a} c={c} />
             ))}
           </div>
-        </>
+        </div>
       )}
 
       <div className="px-2 pt-2">
@@ -100,15 +115,15 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
         ) : (
           <button
             onClick={() => setAdding(true)}
-            className="w-full rounded px-3 py-1.5 text-left text-[13px] text-indigo-200 hover:bg-white/10"
+            className="w-full rounded-md px-2 py-[7px] text-left text-[13px] font-medium text-indigo-200 transition-colors hover:bg-white/10"
           >
             + Add Account
           </button>
         )}
       </div>
 
-      <div className="mt-auto border-t border-white/10 px-4 py-3 text-xs">
-        <div className="text-indigo-300">Age of Money</div>
+      <div className="mt-auto border-t border-white/10 px-2 pt-3 text-xs">
+        <div className="text-[#b9bbe0]">Age of Money</div>
         <div className="text-lg font-semibold text-white">
           {meta.ageOfMoney ?? '–'} <span className="text-sm font-normal text-indigo-200">days</span>
         </div>
@@ -148,6 +163,7 @@ function AddAccount({
         placeholder="Starting balance"
         value={balance}
         onChange={(e) => setBalance(e.target.value)}
+        onBlur={(e) => setBalance(normalizeAmount(e.target.value))}
         className="mb-1 w-full rounded bg-white/90 px-2 py-1 text-slate-800"
       />
       <div className="flex gap-1">

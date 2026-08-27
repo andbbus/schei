@@ -16,6 +16,18 @@ if [ ! -f backend/prisma/dev.db ]; then
   ( cd backend && npm run db:push && npm run seed )
 fi
 
+# --- backup (this is the primary financial record — one snapshot per day, keep 14) ---
+if [ -f backend/prisma/dev.db ]; then
+  mkdir -p backups
+  STAMP=$(date +%Y-%m-%d)
+  if [ ! -f "backups/dev-$STAMP.db" ]; then
+    sqlite3 backend/prisma/dev.db ".backup 'backups/dev-$STAMP.db'" 2>/dev/null \
+      || cp backend/prisma/dev.db "backups/dev-$STAMP.db"
+    ls -t backups/dev-*.db 2>/dev/null | tail -n +15 | xargs rm -f 2>/dev/null
+    echo "Database backed up → backups/dev-$STAMP.db"
+  fi
+fi
+
 PIDS=()
 
 # --- backend (:3001) ---

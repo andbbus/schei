@@ -20,16 +20,25 @@ model Budget {
   locale         String   @default("en-US") // number formatting (e.g. "it-IT" → 1.234,56)
   firstMonth     String // "2026-01-01"
   lastMonth      String // "2026-12-01"
+  categoryLearning Boolean @default(true) // global switch: propose auto-categorization rules on manual categorization
   createdAt      DateTime @default(now())
 
   accounts              Account[]
   categoryGroups        CategoryGroup[]
   categories            Category[]
   payees                Payee[]
+  payeeRules            PayeeRule[]
   transactions          Transaction[]
   monthCategories       MonthCategory[]
   monthBudgets          MonthBudget[]
   scheduledTransactions ScheduledTransaction[]
+  opLogs                OpLog[]
+  debtPlans             DebtPlan[]
+  goalPlans             GoalPlan[]
+  groceryItems          GroceryItem[]
+  shoppingLists         ShoppingList[]
+  suggestionDismissals  SuggestionDismissal[]
+  projectedOverrides    ProjectedOverride[]
 }
 
 model Account {
@@ -47,6 +56,8 @@ model Account {
   transactions    Transaction[]
   transferPayee   Payee?        @relation("AccountTransferPayee")
   paymentCategory Category?     @relation("CardPaymentCategory")
+  debtPlans       DebtPlan[]
+  goalPlans       GoalPlan[]
 
   @@index([budgetId])
 }
@@ -95,6 +106,8 @@ model Category {
   monthCategories MonthCategory[]
   transactions    Transaction[]
   subtransactions Subtransaction[]
+  payeeRules      PayeeRule[]
+  goalPlans       GoalPlan[]
 
   @@index([groupId])
 }
@@ -123,6 +136,158 @@ model MonthBudget {
   @@unique([budgetId, month])
 }
 
+// Transaction rules: ONE condition (field/op/value on the normalized pattern)
+// + ONE action per row, matched in JS through engine/rules.ts — ranked least-
+// to most-specific (pre → default → post stages), cumulative last-wins.
+// "=" prefix on the pattern is the legacy encoding of an exact payee-name
+// match. Never SQL LIKE. Hard-deleted on removal; transactions store
+// categoryId / payeeId, not ruleId.
+model PayeeRule {
+  id         String    @id @default(cuid())
+  budgetId   String
+  budget     Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  pattern    String // normalized condition value: trim, collapse whitespace, lowercase; "=" prefix = legacy exact-payee match
+  field      String    @default("payeeName") // payeeName | memo | account
+  op         String    @default("contains") // is | isNot | oneOf | notOneOf | contains | doesNotContain | regex
+  stage      String    @default("default") // pre | default | post
+  enabled    Boolean   @default(true)
+  action     String    @default("category") // category | payeeName | prependNotes | appendNotes
+  actionText String? // payload of non-category actions (canonical payee name / note text)
+  categoryId String? // required when action = category
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@unique([budgetId, pattern])
+  @@index([budgetId])
+}
+
+// One-shot undo entries for user mutations. Delta payloads so any undo order
+// composes; ops delete themselves on undo. Pruned to the 200 newest on insert.
+model OpLog {
+  id        Int      @id @default(autoincrement())
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  kind      String // assign | autoAssign | move | createTxn | updateTxn | deleteTxn | deleteCategory | deleteGroup | reconcile | hideCategory
+  payload   String // JSON per-kind contract (see docs/IMPLEMENTATION-PLAN.md)
+  createdAt DateTime @default(now())
+
+  @@index([budgetId, id])
+}
+
+// A user-dismissed schedule suggestion (payee + account pair). Dismissed
+// suggestions are hidden from GET /scheduled/suggestions; deleting the row
+// brings the suggestion back.
+model SuggestionDismissal {
+  id        String   @id @default(cuid())
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  payeeId   String
+  accountId String
+  createdAt DateTime @default(now())
+
+  @@unique([budgetId, payeeId, accountId])
+  @@index([budgetId])
+}
+
+// A persisted amortization plan for a debt. Inputs are stored; the payment
+// schedule is derived on read (frontend payoff.ts). Balance syncs from the
+// linked tracking account when accountId is set (-working); manual otherwise.
+model DebtPlan {
+  id           String   @id @default(cuid())
+  budgetId     String
+  budget       Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  name         String
+  accountId    String? // linked tracking (liability) account — balance = -working
+  account      Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  balance      Int // milliunits; effective only when accountId is null
+  tanBps       Int // annual nominal rate in basis points (3% = 300)
+  payment      Int // monthly payment, milliunits (0 when payoff-by-date)
+  targetMonth  String? // "YYYY-MM-01" — payoff-by-date mode
+  extraPayment Int      @default(0)
+  startMonth   String // first payment month "YYYY-MM-01"
+  active       Boolean  @default(true)
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([budgetId])
+}
+
+// A persisted savings-goal plan: target amount + current progress (synced from
+// a linked account, or manual) + planned monthly contribution. The funding
+// schedule is derived on read; contribution schedules feed the budget and the
+// Cash Flow projection. Interest-free by design (v1).
+model GoalPlan {
+  id                   String   @id @default(cuid())
+  budgetId             String
+  budget               Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  name                 String
+  accountId            String? // linked account — current progress syncs from its working balance
+  account              Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  categoryId           String? // funding category for the contribution schedule
+  category             Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  target               Int // milliunits
+  current              Int // milliunits; effective only when accountId is null
+  monthlyContribution  Int // milliunits
+  targetMonth          String? // "YYYY-MM-01" — reach-by-date mode
+  startMonth           String // first contribution month "YYYY-MM-01"
+  active               Boolean  @default(true)
+  note                 String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([budgetId])
+}
+
+// Weekly supermarket offers, one row per product per week. Synced from store
+// adapters (Aldi Nord: parsed from the angebote page's __NEXT_DATA__; Lidl /
+// Netto: bot-protected — use the CSV import) or a manual CSV upload.
+model GroceryItem {
+  id         String   @id @default(cuid())
+  budgetId   String
+  budget     Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  store      String // aldi | lidl | netto | manual
+  name       String
+  brand      String?
+  price      Int // milliunits (€3.79 → 3790); 0 = unknown
+  unit       String? // base-price scale or sales unit ("kg", "1 l", "500 g")
+  imageUrl   String? // product thumbnail (store CDN, hotlinked)
+  week       String // ISO week "2026-W33"
+  externalId String?
+  fetchedAt  DateTime @default(now())
+
+  listItems ShoppingListItem[]
+
+  @@unique([budgetId, store, week, externalId])
+  @@index([budgetId, store, week])
+}
+
+// A shopping list: snapshot of items + prices at add time (catalog rows can be
+// replaced by next week's sync), with a running cost estimate.
+model ShoppingList {
+  id        String   @id @default(cuid())
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  items     ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  id       String   @id @default(cuid())
+  listId   String
+  list     ShoppingList   @relation(fields: [listId], references: [id], onDelete: Cascade)
+  itemId   String? // catalog reference (null = free-text item)
+  item     GroceryItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  name     String // snapshot at add time
+  price    Int // snapshot milliunits (0 = unknown)
+  quantity Int      @default(1)
+  store    String   @default("manual") // aldi | lidl | netto | manual
+  imageUrl String? // snapshot of the product thumbnail
+
+  @@index([listId])
+}
+
 model Payee {
   id                String   @id @default(cuid())
   budgetId          String
@@ -130,9 +295,11 @@ model Payee {
   name              String
   transferAccountId String?  @unique
   transferAccount   Account? @relation("AccountTransferPayee", fields: [transferAccountId], references: [id], onDelete: Cascade)
+  learnDisabled     Boolean  @default(false) // opt out of category auto-learning for this payee
 
-  transactions    Transaction[]
-  subtransactions Subtransaction[]
+  transactions          Transaction[]
+  subtransactions       Subtransaction[]
+  scheduledTransactions ScheduledTransaction[]
 
   @@index([budgetId])
 }
@@ -173,12 +340,16 @@ model ScheduledTransaction {
   budget            Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   accountId         String
   payeeId           String?
+  payee             Payee? @relation(fields: [payeeId], references: [id])
   categoryId        String?
   amount            Int // milliunits, signed
   memo              String?
   flagColor         String?
   frequency         String // once | weekly | everyOtherWeek | monthly | yearly
   nextDate          String // "YYYY-MM-DD"
+  anchorDay         Int? // monthly schedules: keep the day-of-month stable through materialization
+  startMonth        String? // "YYYY-MM-01" — subscription first-charge month (informational)
+  endMonth          String? // "YYYY-MM-01" — inclusive last month; null = ongoing
   transferAccountId String?
   deleted           Boolean @default(false)
 
@@ -199,4 +370,18 @@ model Subtransaction {
   transferAccountId String?
 
   @@index([transactionId])
+}
+
+// Manual override of a category's projected expense for one month. Absent = the
+// moving-average projection applies; present = it wins for that month.
+model ProjectedOverride {
+  id         String   @id @default(cuid())
+  budgetId   String
+  budget     Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  categoryId String
+  month      String // "YYYY-MM-01"
+  amount     Int // signed milliunits, negative = projected spending
+  createdAt  DateTime @default(now())
+
+  @@unique([budgetId, categoryId, month])
 }

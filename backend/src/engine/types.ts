@@ -4,6 +4,7 @@
 export type Cleared = 'uncleared' | 'cleared' | 'reconciled';
 
 export interface EngineSub {
+  id?: string; // for drill-down row keys; null for engine-only paths
   amount: number;
   categoryId: string | null;
   transferAccountId?: string | null;
@@ -15,6 +16,9 @@ export interface EngineTxn {
   amount: number; // milliunits, + inflow / - outflow
   accountId: string;
   categoryId: string | null;
+  payeeId?: string | null;
+  memo?: string | null;
+  flagColor?: string | null;
   cleared: Cleared;
   transferAccountId?: string | null;
   deleted?: boolean;

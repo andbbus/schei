@@ -7,6 +7,10 @@ import App from './App'
 import BudgetView from './components/BudgetView'
 import AccountView from './components/AccountView'
 import ReflectView from './components/ReflectView'
+import DebtsView from './components/DebtsView'
+import GoalsView from './components/GoalsView'
+import ShoppingView from './components/ShoppingView'
+import SubscriptionsView from './components/SubscriptionsView'
 
 const qc = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false } } })
 
@@ -18,6 +22,10 @@ const router = createBrowserRouter([
       { index: true, element: <BudgetView /> },
       { path: 'accounts/:id', element: <AccountView /> },
       { path: 'reflect', element: <ReflectView /> },
+      { path: 'debts', element: <DebtsView /> },
+      { path: 'goals', element: <GoalsView /> },
+      { path: 'shopping', element: <ShoppingView /> },
+      { path: 'subscriptions', element: <SubscriptionsView /> },
     ],
   },
 ])
