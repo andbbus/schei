@@ -39,6 +39,35 @@ model Budget {
   shoppingLists         ShoppingList[]
   suggestionDismissals  SuggestionDismissal[]
   projectedOverrides    ProjectedOverride[]
+  chatSessions          ChatSession[]
+}
+
+// An AI-assistant conversation. Sessions and their messages are chat data, not
+// financial data — hard-deleted on removal (messages cascade).
+model ChatSession {
+  id        String   @id @default(cuid())
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  title     String   @default("New chat")
+  model     String   @default("deepseek-v4-flash")
+  createdAt DateTime @default(now())
+
+  messages ChatMessage[]
+
+  @@index([budgetId])
+}
+
+// One chat turn. role: user | assistant | system (system rows are per-request
+// context, not persisted).
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
 }
 
 model Account {

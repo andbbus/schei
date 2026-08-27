@@ -15,6 +15,7 @@ import DebtsView from './components/DebtsView'
 import GoalsView from './components/GoalsView'
 import ShoppingView from './components/ShoppingView'
 import SubscriptionsView from './components/SubscriptionsView'
+import AssistantView from './components/AssistantView'
 
 const qc = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false } } })
 
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: 'goals', element: <GoalsView /> },
       { path: 'shopping', element: <ShoppingView /> },
       { path: 'subscriptions', element: <SubscriptionsView /> },
+      { path: 'assistant', element: <AssistantView /> },
     ],
   },
 ])

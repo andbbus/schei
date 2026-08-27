@@ -77,6 +77,7 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
         <NavItem to="/goals" label="Goals" icon="🎯" />
         <NavItem to="/subscriptions" label="Subscriptions" icon="🔁" />
         <NavItem to="/shopping" label="Shopping" icon="🛒" />
+    <NavItem to="/assistant" label="Assistant" icon="🤖" />
       </nav>
 
       <div className="flex flex-col gap-0.5">

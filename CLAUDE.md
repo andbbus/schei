@@ -78,6 +78,16 @@ If you change engine math, re-run both.
 - **`routes/budget.ts`** — months, assign, auto-assign, move, categories/groups CRUD.
 - **`routes/reports.ts`** — spending / income-expense / net-worth / age-of-money (all take `from`/`to`, spending also `accountId`) + cash-flow (`?months=1..36`, calls `materializeDue` first).
 - **`routes/ops.ts` + `routes/ops-helpers.ts`** — the undo system. Every logged mutation wraps **mutation + prev-value reads + op insert + prune (200)** in ONE `prisma.$transaction` (`logOps(tx, ...)`); undo applies the inverse + deletes the op in one transaction. **Delta payloads** (`{categoryId, month, prev, next}`) so any undo order composes — never absolute restores. `createTransaction`/`resolvePayee`/`transferPayee` accept an optional `tx` client; anything called inside a transaction MUST use it (SQLite busy otherwise). 4xx errors use the `{ error: string }` JSON shape so the frontend `errMsg` parser surfaces them.
+- **`routes/chat.ts`** — AI assistant backed by the **opencode-go gateway** (OpenAI-compatible
+  `POST {CHAT_BASE_URL:-https://opencode.ai/zen/go/v1}/chat/completions`; key from `CHAT_API_KEY` /
+  `CHAT_API_KEY_FILE` — same key-file pattern as AgentMail). `ChatSession`/`ChatMessage` are chat
+  data → **hard-deleted** (messages cascade). Every turn injects a derived budget snapshot
+  (`buildBudgetContext`: accounts, RTA, per-category assigned/activity/available, upcoming
+  schedules, last 15 txns) as the system prompt — never persisted. Default model
+  `deepseek-v4-flash` (`CHAT_MODEL`; the user's "-0731" id isn't on the gateway). Upstream errors →
+  502 `{ error }`, user message kept for retry. Sessions list/rename/delete; first exchange names
+  the session. UI: `/assistant` (`AssistantView.tsx`, sidebar 🤖) with sessions rail, thread,
+  optimistic user bubble, delete-forever.
 - **`routes/debts.ts`** — DebtPlan CRUD + `POST /debt-plans/:id/payment-schedule` (memo marker `Piano ammortamento: <planId>` for idempotency / `hasPaymentSchedule`; `frequency: monthly|once`). Schedule inputs are stored, amortization is derived client-side (`frontend/src/payoff.ts`).
 - **`routes/goals.ts`** — GoalPlan CRUD (mirror of DebtPlan: target/current,
   optional account + category link) + `POST /goal-plans/:id/contribution-schedule`

@@ -39,6 +39,13 @@ export interface AccountLite {
   working: number
   upcoming: number
 }
+export interface ChatMsg {
+  id: string
+  role: string
+  content: string
+  createdAt: string
+}
+
 export interface BudgetMeta {
   budget: {
     id: string
@@ -376,6 +383,18 @@ export const api = {
     send('PATCH', `/shopping/lists/${listId}/items/${itemId}`, { quantity }),
   shoppingRemoveItem: (listId: string, itemId: string) => send('DELETE', `/shopping/lists/${listId}/items/${itemId}`),
   shoppingEmail: (listId: string, to?: string) => send('POST', `/shopping/lists/${listId}/email`, { to }),
+
+  chatStatus: () => get<{ configured: boolean; defaultModel: string }>('/chat/status'),
+  chatSessions: () =>
+    get<{ id: string; title: string; model: string; createdAt: string; lastMessage: string | null }[]>('/chat/sessions'),
+  createChatSession: (b?: { title?: string; model?: string }) =>
+    send<{ id: string; title: string; model: string; createdAt: string }>('POST', '/chat/sessions', b ?? {}),
+  renameChatSession: (id: string, b: { title?: string; model?: string }) => send('PATCH', `/chat/sessions/${id}`, b),
+  deleteChatSession: (id: string) => send<{ ok: boolean }>('DELETE', `/chat/sessions/${id}`),
+  chatMessages: (id: string) =>
+    get<{ id: string; role: string; content: string; createdAt: string }[]>(`/chat/sessions/${id}/messages`),
+  sendChatMessage: (id: string, content: string, model?: string) =>
+    send<{ user: ChatMsg; assistant: ChatMsg }>('POST', `/chat/sessions/${id}/messages`, model ? { content, model } : { content }),
   categories: () => get<GroupView[]>('/categories'),
   patchCategory: (id: string, b: Record<string, unknown>) => send('PATCH', `/categories/${id}`, b),
   createCategory: (groupId: string, name: string) => send('POST', '/categories', { groupId, name }),

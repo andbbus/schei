@@ -10,6 +10,7 @@ import debtRoutes from './routes/debts';
 import goalRoutes from './routes/goals';
 import shoppingRoutes from './routes/shopping';
 import importRoutes from './routes/imports';
+import chatRoutes from './routes/chat';
 
 const app = Fastify({ logger: false });
 
@@ -25,6 +26,7 @@ await app.register(debtRoutes, { prefix: '/api' });
 await app.register(goalRoutes, { prefix: '/api' });
 await app.register(shoppingRoutes, { prefix: '/api' });
 await app.register(importRoutes, { prefix: '/api' });
+await app.register(chatRoutes, { prefix: '/api' });
 
 const port = Number(process.env.PORT ?? 3001);
 app
