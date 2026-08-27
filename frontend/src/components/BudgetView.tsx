@@ -65,9 +65,9 @@ export default function BudgetView() {
   const expectedMonth = expected?.months.find((m) => m.month === month)
 
   return (
-    <div className="flex h-full flex-col bg-[#f6f7f9]">
+    <div className="flex h-full flex-col bg-slate-50">
       {/* Toolbar */}
-      <div className="flex h-14 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-6">
+      <div className="flex h-14 shrink-0 items-center gap-4 border-b border-slate-200 bg-panel px-6">
         <div className="flex items-center gap-1">
           <button
             disabled={idx <= 0}
@@ -91,7 +91,7 @@ export default function BudgetView() {
             const name = window.prompt('Group name')?.trim()
             if (name) groupOp.mutate(() => api.createGroup(name))
           }}
-          className="ml-auto rounded border border-slate-300 bg-white px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100"
+          className="ml-auto rounded border border-slate-300 bg-panel px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100"
         >
           + Category Group
         </button>
@@ -100,7 +100,7 @@ export default function BudgetView() {
       <div className="flex flex-1 overflow-hidden">
         {/* Table */}
         <div className="flex flex-1 flex-col overflow-y-auto p-6">
-          <div className="shrink-0 overflow-visible rounded-[10px] border border-slate-200 bg-white shadow-[var(--elev-subtle)]">
+          <div className="shrink-0 overflow-visible rounded-[10px] border border-slate-200 bg-panel shadow-[var(--elev-subtle)]">
             <div className="grid grid-cols-[36px_minmax(240px,1fr)_136px_136px_152px] h-8 shrink-0 items-center rounded-t-[10px] border-b border-slate-200 bg-slate-100 px-2 text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
               <div />
               <div className="px-3">Category</div>

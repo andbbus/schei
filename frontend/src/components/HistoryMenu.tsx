@@ -30,7 +30,7 @@ export default function HistoryMenu() {
     <div className="fixed top-20 right-4 z-40">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow-sm hover:bg-slate-50"
+        className="rounded-full border border-slate-200 bg-panel px-3 py-1.5 text-sm text-slate-600 shadow-sm hover:bg-slate-50"
         title="Recent actions (undo)"
       >
         🕘{ops && ops.length > 0 ? ` ${ops.length}` : ''}
@@ -38,7 +38,7 @@ export default function HistoryMenu() {
       {open && (
         <>
           <div className="fixed inset-0" onClick={() => setOpen(false)} />
-          <div className="absolute top-full right-0 mt-1 w-80 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          <div className="absolute top-full right-0 mt-1 w-80 rounded-lg border border-slate-200 bg-panel py-1 shadow-lg">
             <div className="border-b border-slate-100 px-3 py-1.5 text-[11px] tracking-wide text-slate-400 uppercase">
               Recent actions
             </div>

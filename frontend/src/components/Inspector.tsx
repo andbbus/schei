@@ -38,7 +38,7 @@ export default function Inspector({
 
   if (selected.length === 0) {
     return (
-      <div className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
+      <div className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-panel p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
         <div className="text-[11px] font-semibold tracking-[0.06em] text-slate-400 uppercase">Ready to Assign</div>
         <div className={`tnum mt-1 text-2xl font-semibold ${readyToAssign < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
           {fmt(readyToAssign, c)}
@@ -55,7 +55,7 @@ export default function Inspector({
   const single = selected.length === 1 ? selected[0] : null
 
   return (
-    <div className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
+    <div className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-panel p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
       {single ? (
         <div>
           <div className="text-[15px] font-semibold text-slate-800">{single.name}</div>
@@ -80,7 +80,7 @@ export default function Inspector({
             <button
               key={a.mode}
               onClick={() => auto.mutate({ ids, mode: a.mode })}
-              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[12px] text-slate-700 transition-colors hover:bg-slate-100"
+              className="rounded-md border border-slate-300 bg-panel px-2 py-1.5 text-[12px] text-slate-700 transition-colors hover:bg-slate-100"
             >
               {a.label}
             </button>
@@ -213,7 +213,7 @@ function TargetEditor({ cat, c, onSaved }: { cat: CategoryView; c: Currency; onS
               goalNeedsWholeAmount: true,
             })
           }
-          className="flex-1 rounded bg-emerald-500 px-2 py-1 text-sm text-white"
+          className="flex-1 rounded bg-positive px-2 py-1 text-sm text-white"
         >
           Save
         </button>

@@ -52,7 +52,7 @@ export default function ForecastPanel({
   const net = knownNet - projTotal
 
   return (
-    <aside className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
+    <aside className="flex h-full w-[328px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-slate-200 bg-panel p-5 shadow-[-8px_0_24px_-20px_rgba(16,24,40,0.4)]">
       {/* Ready to Assign */}
       <div>
         <div className="text-[11px] font-semibold tracking-[0.06em] text-slate-400 uppercase">Ready to Assign</div>
@@ -101,7 +101,7 @@ export default function ForecastPanel({
                 key={w}
                 onClick={() => setMonths(w)}
                 className={`px-2 py-0.5 text-[11px] transition-colors ${
-                  months === w ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                  months === w ? 'bg-slate-300 text-slate-950' : 'bg-panel text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {w}m

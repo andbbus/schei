@@ -93,7 +93,7 @@ export default function SuggestionsModal({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[80vh] w-[680px] flex-col rounded-xl bg-white p-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[80vh] w-[680px] flex-col rounded-xl bg-panel p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-slate-800">Schedule Suggestions</h2>
           <button onClick={onClose} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
@@ -147,7 +147,7 @@ export default function SuggestionsModal({
               <div className="mt-2 flex gap-1.5">
                 <button
                   onClick={() => add.mutate(editing)}
-                  className="rounded bg-emerald-500 px-3 py-1 text-sm text-white"
+                  className="rounded bg-positive px-3 py-1 text-sm text-white"
                 >
                   Add schedule
                 </button>
@@ -179,7 +179,7 @@ export default function SuggestionsModal({
                 </div>
                 <button
                   onClick={() => startEdit(s)}
-                  className="shrink-0 rounded bg-blue-600 px-2.5 py-1 text-xs text-white hover:bg-blue-700"
+                  className="shrink-0 rounded bg-accent px-2.5 py-1 text-xs text-white hover:bg-accent-hover"
                 >
                   Add
                 </button>

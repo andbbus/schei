@@ -98,7 +98,7 @@ export default function DebtSavings({ meta, range, c }: { meta: BudgetMeta; rang
         <div className="print:hidden">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
               <XAxis dataKey="month" tickFormatter={shortMonth} fontSize={12} />
               <YAxis yAxisId="eur" tickFormatter={(v) => fmt(v, { ...c, digits: 0 })} fontSize={12} width={80} />
               <YAxis
@@ -116,13 +116,13 @@ export default function DebtSavings({ meta, range, c }: { meta: BudgetMeta; rang
                 labelFormatter={(m) => shortMonth(String(m))}
               />
               <Legend />
-              <Bar yAxisId="eur" dataKey="net" name="Net savings" fill={series.some((s) => s.net < 0) ? '#f97316' : '#22c55e'} />
+              <Bar yAxisId="eur" dataKey="net" name="Net savings" fill={series.some((s) => s.net < 0) ? '#ff9e64' : '#9ece6a'} />
               <Line
                 yAxisId="pct"
                 type="monotone"
                 dataKey="rate"
                 name="Rate"
-                stroke="#a855f7"
+                stroke="#bb9af7"
                 strokeWidth={2}
                 dot={false}
                 connectNulls={false}
@@ -216,18 +216,18 @@ export default function DebtSavings({ meta, range, c }: { meta: BudgetMeta; rang
             <div className="mb-4 print:hidden">
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={balanceChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
                   <XAxis dataKey="month" fontSize={11} />
                   <YAxis tickFormatter={(v) => fmt(v, { ...c, digits: 0 })} fontSize={11} width={80} />
                   <Tooltip formatter={(v) => fmt(Number(v), c)} />
-                  <Line type="monotone" dataKey="balance" name="Remaining balance" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="balance" name="Remaining balance" stroke="#7aa2f7" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
             <div className="max-h-80 overflow-y-auto rounded border border-slate-200">
               <table className="w-full text-[13px]">
-                <thead className="sticky top-0 bg-white text-left text-[11px] tracking-wide text-slate-400 uppercase">
+                <thead className="sticky top-0 bg-panel text-left text-[11px] tracking-wide text-slate-400 uppercase">
                   <tr className="border-b border-slate-200">
                     <th className="px-3 py-1.5">Month</th>
                     <th className="px-3 py-1.5 text-right">Payment</th>

@@ -87,7 +87,7 @@ export default function PayeesManager({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[80vh] w-[640px] flex-col rounded-xl bg-white p-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[80vh] w-[640px] flex-col rounded-xl bg-panel p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-slate-800">Payees</h2>
           <button onClick={onClose} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
@@ -108,11 +108,11 @@ export default function PayeesManager({ onClose }: { onClose: () => void }) {
             <button
               onClick={() => createRenameRule.mutate(learnOffer)}
               disabled={createRenameRule.isPending}
-              className="rounded bg-blue-600 px-2 py-1 text-white disabled:opacity-40"
+              className="rounded bg-accent px-2 py-1 text-white disabled:opacity-40"
             >
               Yes, always
             </button>
-            <button onClick={() => setLearnOffer(null)} className="rounded px-2 py-1 text-slate-500 hover:bg-white">
+            <button onClick={() => setLearnOffer(null)} className="rounded px-2 py-1 text-slate-500 hover:bg-panel">
               No
             </button>
           </div>
@@ -130,7 +130,7 @@ export default function PayeesManager({ onClose }: { onClose: () => void }) {
                   <button
                     onClick={() => merge.mutate({ fromId: p.fromId, toId: p.toId })}
                     disabled={merge.isPending}
-                    className="shrink-0 rounded bg-amber-600 px-2 py-0.5 text-white disabled:opacity-40"
+                    className="shrink-0 rounded bg-warning px-2 py-0.5 text-white disabled:opacity-40"
                   >
                     Merge
                   </button>
@@ -162,7 +162,7 @@ export default function PayeesManager({ onClose }: { onClose: () => void }) {
                         }}
                         className="min-w-0 flex-1 rounded border border-blue-300 px-2 py-1"
                       />
-                      <button onClick={() => rename.mutate()} className="rounded bg-emerald-500 px-2 py-1 text-xs text-white">
+                      <button onClick={() => rename.mutate()} className="rounded bg-positive px-2 py-1 text-xs text-white">
                         Save
                       </button>
                       <button onClick={() => setEditingId(null)} className="rounded border border-slate-200 px-2 py-1 text-xs">
@@ -219,7 +219,7 @@ export default function PayeesManager({ onClose }: { onClose: () => void }) {
                     <button
                       disabled={!targetId || merge.isPending}
                       onClick={() => merge.mutate({ fromId: merging!, toId: targetId })}
-                      className="rounded bg-red-500 px-2 py-1 text-xs text-white disabled:opacity-40"
+                      className="rounded bg-negative px-2 py-1 text-xs text-white disabled:opacity-40"
                     >
                       Merge
                     </button>

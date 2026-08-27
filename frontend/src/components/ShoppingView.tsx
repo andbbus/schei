@@ -116,7 +116,7 @@ export default function ShoppingView() {
   }, [lists, selectedId])
 
   return (
-    <div className="flex h-full bg-white">
+    <div className="flex h-full bg-panel">
       <div className="flex w-[46%] min-w-[380px] shrink-0 flex-col border-r border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
@@ -129,7 +129,7 @@ export default function ShoppingView() {
             <button
               onClick={() => sync.mutate()}
               disabled={sync.isPending}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+              className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-40"
             >
               {sync.isPending ? 'Sincronizzo…' : 'Sync'}
             </button>
@@ -199,7 +199,7 @@ export default function ShoppingView() {
                 <span className="tnum shrink-0 text-slate-700">{it.price > 0 ? fmt(it.price, c) : '—'}</span>
                 <button
                   onClick={() => addItem.mutate(it)}
-                  className="shrink-0 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                  className="shrink-0 rounded bg-accent px-2 py-1 text-xs text-white hover:bg-accent-hover"
                 >
                   +
                 </button>
@@ -344,7 +344,7 @@ export default function ShoppingView() {
                   <button
                     onClick={() => email.mutate(selected.id)}
                     disabled={email.isPending}
-                    className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+                    className="rounded bg-positive px-3 py-1.5 text-sm font-medium text-white hover:bg-positive-hover disabled:opacity-40"
                   >
                     Invia email
                   </button>

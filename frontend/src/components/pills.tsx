@@ -15,7 +15,7 @@ export function availablePill(available: number, target?: TargetState, overspend
 export function rtaPill(rta: number): string {
   if (rta > 0) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (rta < 0) return 'bg-red-50 text-red-600 border-red-200'
-  return 'bg-white text-slate-700 border-slate-200'
+  return 'bg-panel text-slate-700 border-slate-200'
 }
 
 export function rtaLabel(rta: number): string {

@@ -31,7 +31,7 @@ import { buildBva, rowColor, type BvaRow } from '../lib/bva'
 const TABS = ['Spending', 'Net Worth', 'Income v Expense', 'Age of Money', 'Budget vs Actual', 'Cash Flow', 'Debt & Savings'] as const
 type Tab = (typeof TABS)[number]
 
-const COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ef4444', '#14b8a6', '#eab308', '#ec4899', '#64748b']
+const COLORS = ['#7aa2f7', '#9ece6a', '#ff9e64', '#bb9af7', '#f7768e', '#73daca', '#e0af68', '#f477c1', '#565f89']
 
 const shortMonth = (m: string) => {
   const [y, mm] = m.split('-')
@@ -83,14 +83,14 @@ export default function ReflectView() {
     range.from === range.to ? shortMonth(range.from) : `${shortMonth(range.from)} – ${shortMonth(range.to)}`
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-panel">
       <div className="print-hide flex gap-1 border-b border-slate-200 px-5 py-3">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
-              tab === t ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+              tab === t ? 'bg-accent text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             {t}
@@ -105,7 +105,7 @@ export default function ReflectView() {
                 key={n}
                 onClick={() => setHorizon(n)}
                 className={`rounded px-2.5 py-1 text-[12px] font-medium ${
-                  horizon === n ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  horizon === n ? 'bg-accent text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {n} months
@@ -144,7 +144,7 @@ export default function ReflectView() {
                 key={p.label}
                 onClick={() => setRange({ from: p.from, to: p.to })}
                 className={`rounded px-2.5 py-1 text-[12px] font-medium ${
-                  active(p) ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  active(p) ? 'bg-accent text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {p.label}
@@ -337,12 +337,12 @@ function NetWorth({
       <div className="print:hidden">
         <ResponsiveContainer width="100%" height={420}>
           <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
             <XAxis dataKey="month" tickFormatter={shortMonth} fontSize={12} />
             <YAxis tickFormatter={axis} fontSize={12} width={80} />
             <Tooltip formatter={(v) => tip(Number(v))} labelFormatter={(m) => shortMonth(String(m))} />
             <Legend />
-            <Area type="monotone" dataKey="netWorth" name="Net Worth" stroke="#3b82f6" fill="#bfdbfe" />
+            <Area type="monotone" dataKey="netWorth" name="Net Worth" stroke="#7aa2f7" fill="rgba(122,162,247,0.18)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -399,13 +399,13 @@ function IncomeExpense({
       <div className="print:hidden">
         <ResponsiveContainer width="100%" height={420}>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
             <XAxis dataKey="month" tickFormatter={shortMonth} fontSize={12} />
             <YAxis tickFormatter={axis} fontSize={12} width={80} />
             <Tooltip formatter={(v) => tip(Number(v))} labelFormatter={(m) => shortMonth(String(m))} />
             <Legend />
-            <Bar dataKey="income" name="Income" fill="#22c55e" />
-            <Bar dataKey="expense" name="Expense" fill="#ef4444" />
+            <Bar dataKey="income" name="Income" fill="#9ece6a" />
+            <Bar dataKey="expense" name="Expense" fill="#f7768e" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -450,11 +450,11 @@ function Age({ range, c }: { range: { from: string; to: string }; c: Currency })
       <div className="print:hidden">
         <ResponsiveContainer width="100%" height={420}>
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
             <XAxis dataKey="month" tickFormatter={shortMonth} fontSize={12} />
             <YAxis fontSize={12} width={50} />
             <Tooltip formatter={(v) => `${Number(v)} days`} labelFormatter={(m) => shortMonth(String(m))} />
-            <Line type="monotone" dataKey="age" name="Age of Money" stroke="#a855f7" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="age" name="Age of Money" stroke="#bb9af7" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -611,13 +611,13 @@ function BudgetVsActual({
           <div className="print:hidden">
             <ResponsiveContainer width="100%" height={360}>
               <BarChart data={chartData} layout="vertical" margin={{ left: 40, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
                 <XAxis type="number" tickFormatter={axisFmt} fontSize={12} />
                 <YAxis type="category" dataKey="name" width={150} fontSize={11} />
                 <Tooltip formatter={(v) => tip(Number(v))} />
                 <Legend />
                 <Bar dataKey="assigned" name="Assigned" fill="#94a3b8" />
-                <Bar dataKey="spent" name="Spent" fill="#3b82f6" />
+                <Bar dataKey="spent" name="Spent" fill="#7aa2f7" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -726,7 +726,7 @@ function CashFlow({ horizon, c, tip }: { horizon: number; c: Currency; tip: (v: 
           <h3 className="mb-2 font-semibold text-slate-700">Projection</h3>
           <ResponsiveContainer width="100%" height={360}>
             <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
               <XAxis dataKey="month" tickFormatter={shortMonth} fontSize={12} />
               <YAxis tickFormatter={(v) => fmt(v, { ...c, digits: 0 })} fontSize={12} width={80} />
               <Tooltip formatter={(v) => tip(Number(v))} labelFormatter={(m) => shortMonth(String(m))} />
@@ -738,9 +738,9 @@ function CashFlow({ horizon, c, tip }: { horizon: number; c: Currency; tip: (v: 
                 label={{ value: 'anchor RTA', fontSize: 10, fill: '#94a3b8' }}
               />
               <ReferenceLine y={0} stroke="#e2e8f0" />
-              <Bar dataKey="income" name="Known income" fill="#22c55e" />
-              <Bar dataKey="spending" name="Projected spending" fill="#ef4444" />
-              <Line type="monotone" dataKey="rta" name="Projected RTA" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              <Bar dataKey="income" name="Known income" fill="#9ece6a" />
+              <Bar dataKey="spending" name="Projected spending" fill="#f7768e" />
+              <Line type="monotone" dataKey="rta" name="Projected RTA" stroke="#7aa2f7" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

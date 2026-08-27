@@ -48,7 +48,7 @@ export default function DuplicatesModal({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[80vh] w-[620px] flex-col rounded-xl bg-white p-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[80vh] w-[620px] flex-col rounded-xl bg-panel p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-slate-800">Possible Duplicates</h2>
           <button onClick={onClose} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
@@ -102,7 +102,7 @@ export default function DuplicatesModal({
             onClick={() => {
               if (window.confirm(`Delete ${selected.size} selected transaction(s)?`)) del.mutate([...selected])
             }}
-            className="rounded bg-red-500 px-3 py-1.5 text-sm text-white disabled:opacity-40"
+            className="rounded bg-negative px-3 py-1.5 text-sm text-white disabled:opacity-40"
           >
             {del.isPending ? 'Deleting…' : `Delete selected (${selected.size})`}
           </button>

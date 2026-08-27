@@ -189,8 +189,8 @@ export default function AccountView() {
   if (!account) return <div className="p-6 text-slate-500">Account not found.</div>
 
   return (
-    <div className="flex h-full flex-col bg-[#f6f7f9]">
-      <div className="flex items-end justify-between border-b border-slate-200 bg-white px-6 py-4">
+    <div className="flex h-full flex-col bg-slate-50">
+      <div className="flex items-end justify-between border-b border-slate-200 bg-panel px-6 py-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">{account.name}</h1>
           <div className="mt-1 flex gap-4 text-sm">
@@ -209,7 +209,7 @@ export default function AccountView() {
           >
             Reconcile
           </button>
-          <button onClick={() => setAdding(true)} className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">
+          <button onClick={() => setAdding(true)} className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover">
             + Add Transaction
           </button>
           <HeaderMenu
@@ -353,11 +353,11 @@ export default function AccountView() {
               })
             }
             disabled={createRuleM.isPending}
-            className="rounded bg-blue-600 px-2 py-1 text-xs text-white disabled:opacity-40"
+            className="rounded bg-accent px-2 py-1 text-xs text-white disabled:opacity-40"
           >
             Always
           </button>
-          <button onClick={() => setLearnDismissed(true)} className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-white">
+          <button onClick={() => setLearnDismissed(true)} className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-panel">
             No thanks
           </button>
           {learnOffer.payeeId && (
@@ -366,7 +366,7 @@ export default function AccountView() {
                 learnOffM.mutate(learnOffer.payeeId)
                 setLearnDismissed(true)
               }}
-              className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-white"
+              className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-panel"
               title="Stop offering rules for this payee"
             >
               Never for this payee
@@ -375,7 +375,7 @@ export default function AccountView() {
         </div>
       )}
 
-      <div className="mx-6 mb-6 mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-[var(--elev-subtle)]">
+      <div className="mx-6 mb-6 mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-slate-200 bg-panel shadow-[var(--elev-subtle)]">
         <div className="grid grid-cols-[28px_36px_110px_1fr_1fr_1fr_120px_120px_36px_120px] h-8 shrink-0 items-center border-b border-slate-200 bg-slate-100 px-3 text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
           <input
             ref={selectAllRef}
@@ -514,7 +514,7 @@ function HeaderMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full right-0 z-20 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          <div className="absolute top-full right-0 z-20 mt-1 w-52 rounded-lg border border-slate-200 bg-panel py-1 shadow-lg">
             <button
               disabled={!canExport}
               onClick={() => {
@@ -572,7 +572,7 @@ function FilterBar({
 }) {
   const n = activeCount(filters)
   const input =
-    'rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500/35'
+    'rounded-md border border-slate-300 bg-panel px-2.5 py-1.5 text-[13px] text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500/35'
   const CLEARED: { value: Filters['cleared']; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'uncleared', label: 'Uncleared' },
@@ -586,7 +586,7 @@ function FilterBar({
       return { ...f, [key]: next }
     })
   return (
-    <div className="print-hide mx-6 mt-4 flex flex-wrap items-end gap-3 rounded-[10px] border border-slate-200 bg-white p-4 shadow-[var(--elev-subtle)]">
+    <div className="print-hide mx-6 mt-4 flex flex-wrap items-end gap-3 rounded-[10px] border border-slate-200 bg-panel p-4 shadow-[var(--elev-subtle)]">
       <input
         placeholder="Search…"
         value={filters.q}
@@ -630,7 +630,7 @@ function FilterBar({
           <button
             key={p.value}
             onClick={() => setF('cleared', p.value)}
-            className={`px-2 py-1 text-[12px] ${filters.cleared === p.value ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+            className={`px-2 py-1 text-[12px] ${filters.cleared === p.value ? 'bg-accent text-white' : 'bg-panel text-slate-600 hover:bg-slate-100'}`}
           >
             {p.label}
           </button>
@@ -671,7 +671,7 @@ function MultiSelect({
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`${selected.length > 0 ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600'} rounded border px-2 py-1 text-[12px] hover:bg-slate-100`}
+        className={`${selected.length > 0 ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-panel text-slate-600'} rounded border px-2 py-1 text-[12px] hover:bg-slate-100`}
       >
         {label}
         {selected.length > 0 && <span className="ml-1 font-semibold">{selected.length}</span>}
@@ -679,7 +679,7 @@ function MultiSelect({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
+          <div className="absolute top-full left-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-panel p-1.5 shadow-lg">
             <input
               autoFocus
               placeholder={`Filter ${label.toLowerCase()}s…`}
@@ -731,7 +731,7 @@ function ReconcilePanel({
           <span>
             Is your current bank balance <b className="tnum">{fmt(clearedBalance, c)}</b>?
           </span>
-          <button onClick={() => onFinish(clearedBalance)} className="rounded bg-emerald-500 px-3 py-1 text-white">
+          <button onClick={() => onFinish(clearedBalance)} className="rounded bg-positive px-3 py-1 text-white">
             Yes, finish
           </button>
           <button onClick={() => setEntering(true)} className="rounded border border-slate-300 px-3 py-1">
@@ -754,7 +754,7 @@ function ReconcilePanel({
               {diff === 0 ? 'Matches cleared balance.' : `Adjustment of ${fmt(diff, c)} will be created.`}
             </span>
           )}
-          <button onClick={() => onFinish(parseAmount(balance))} className="rounded bg-emerald-500 px-3 py-1 text-white">
+          <button onClick={() => onFinish(parseAmount(balance))} className="rounded bg-positive px-3 py-1 text-white">
             Finish reconciliation
           </button>
         </>
@@ -795,7 +795,7 @@ function Row({
       onClick={onEdit}
       className={`group grid grid-cols-[28px_36px_110px_1fr_1fr_1fr_120px_120px_36px_120px] min-h-[34px] items-center border-b border-slate-200 px-3 text-[13px] transition-colors duration-100 hover:bg-slate-50 ${
         t.upcoming ? 'text-slate-400 italic' : 'text-slate-700'
-      } ${selected ? 'bg-blue-50 shadow-[inset_2px_0_0_#3b82f6] hover:bg-[#e6f0ff]' : ''}`}
+      } ${selected ? 'bg-blue-50 shadow-[inset_2px_0_0_#7aa2f7] hover:bg-blue-100' : ''}`}
     >
       <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={selected} onChange={() => onToggleSelect(t.id)} className="h-[15px] w-[15px] accent-blue-500" />
@@ -814,9 +814,9 @@ function Row({
         <span
           className={`inline-grid h-4 w-4 place-items-center rounded-full border text-[9px] font-bold ${
             t.cleared === 'uncleared'
-              ? 'border-slate-300 bg-white text-slate-400'
+              ? 'border-slate-300 bg-panel text-slate-400'
               : t.cleared === 'reconciled'
-                ? 'border-emerald-600 bg-emerald-600 text-white'
+                ? 'border-emerald-600 bg-positive text-white'
                 : 'border-emerald-200 bg-emerald-50 text-emerald-700'
           }`}
           title={t.cleared}
@@ -959,7 +959,7 @@ function TxnEditor({
     setSubs((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)))
 
   return (
-    <div className="print-hide border-b border-blue-200 bg-blue-50 px-3 py-2 text-[13px] shadow-[inset_2px_0_0_#3b82f6]">
+    <div className="print-hide border-b border-blue-200 bg-blue-50 px-3 py-2 text-[13px] shadow-[inset_2px_0_0_#7aa2f7]">
       <div className="grid grid-cols-[28px_36px_110px_1fr_1fr_1fr_120px_120px_36px_120px] items-center gap-1">
         <div />
         <div className="relative text-center">
@@ -967,10 +967,10 @@ function TxnEditor({
             ⚑
           </button>
           {pickingFlag && (
-            <div className="absolute top-6 left-0 z-10 flex gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+            <div className="absolute top-6 left-0 z-10 flex gap-1 rounded-lg border border-slate-200 bg-panel p-2 shadow-lg">
               <button
                 onClick={() => { setFlag(''); setPickingFlag(false) }}
-                className="h-4 w-4 rounded-full border border-slate-300 bg-white"
+                className="h-4 w-4 rounded-full border border-slate-300 bg-panel"
                 title="No flag"
               />
               {FLAG_COLORS.map((f) => (
@@ -1090,7 +1090,7 @@ function TxnEditor({
               Skip next
             </button>
           )}
-          <button onClick={submit} className="rounded bg-emerald-500 px-2 py-0.5 text-xs text-white">Save</button>
+          <button onClick={submit} className="rounded bg-positive px-2 py-0.5 text-xs text-white">Save</button>
           <button onClick={onCancel} className="rounded bg-slate-200 px-2 py-0.5 text-xs">✕</button>
           {onDelete && (
             <button onClick={onDelete} className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">🗑</button>
@@ -1099,7 +1099,7 @@ function TxnEditor({
       </div>
 
       {split && canSplit && (
-        <div className="mt-1.5 rounded border border-blue-200 bg-white p-2">
+        <div className="mt-1.5 rounded border border-blue-200 bg-panel p-2">
           <div className="mb-1.5 text-[11px] font-semibold text-slate-500">Split rows (total {fmt(splitTotal, c)})</div>
           {subs.map((s, i) => (
             <div key={i} className="mb-1 flex items-center gap-1.5">
@@ -1174,7 +1174,7 @@ function TxnEditor({
 
 function flagHex(color: string): string {
   const m: Record<string, string> = {
-    red: '#ef4444', orange: '#f97316', yellow: '#eab308', green: '#22c55e', blue: '#3b82f6', purple: '#a855f7',
+    red: '#f7768e', orange: '#ff9e64', yellow: '#e0af68', green: '#9ece6a', blue: '#7aa2f7', purple: '#bb9af7',
   }
   return m[color] ?? '#94a3b8'
 }

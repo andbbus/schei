@@ -167,7 +167,7 @@ export default function RulesManager({ groups, onClose }: { groups: GroupView[];
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[85vh] w-[680px] flex-col rounded-xl bg-white p-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[85vh] w-[680px] flex-col rounded-xl bg-panel p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-slate-800">Transaction Rules</h2>
           <button onClick={onClose} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
@@ -256,7 +256,7 @@ export default function RulesManager({ groups, onClose }: { groups: GroupView[];
             <button
               disabled={!canSave}
               onClick={() => save.mutate()}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
+              className="rounded bg-accent px-3 py-1.5 text-sm text-white disabled:opacity-40"
             >
               {editingId ? 'Update' : 'Add rule'}
             </button>

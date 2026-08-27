@@ -36,7 +36,7 @@ export default function TxnListModal({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[80vh] w-[760px] flex-col rounded-xl bg-white shadow-xl">
+      <div className="relative z-10 flex max-h-[80vh] w-[760px] flex-col rounded-xl bg-panel shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
           <div>
             <div className="text-[15px] font-semibold text-slate-800">{title}</div>
@@ -60,7 +60,7 @@ export default function TxnListModal({
           {data && data.txns.length === 0 && <div className="p-6 text-center text-sm text-slate-400">No transactions in this range.</div>}
           {data && data.txns.length > 0 && (
             <table className="w-full text-[13px]">
-              <thead className="sticky top-0 bg-white text-left text-[11px] tracking-wide text-slate-400 uppercase">
+              <thead className="sticky top-0 bg-panel text-left text-[11px] tracking-wide text-slate-400 uppercase">
                 <tr className="border-b border-slate-100">
                   <th className="px-3 py-1.5">Date</th>
                   <th className="px-3 py-1.5">Payee</th>

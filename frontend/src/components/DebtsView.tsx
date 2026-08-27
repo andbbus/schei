@@ -70,13 +70,13 @@ export default function DebtsView() {
   const onBudget = meta.accounts.filter((a) => a.onBudget && !a.closed)
 
   return (
-    <div className="flex h-full bg-white">
+    <div className="flex h-full bg-panel">
       <div className="flex w-80 shrink-0 flex-col border-r border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold text-slate-800">Debts</h1>
           <button
             onClick={() => setEditing('new')}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover"
           >
             + New plan
           </button>
@@ -303,7 +303,7 @@ function PlanDetail({
             <button
               disabled={!sourceId || createSchedule.isPending}
               onClick={() => createSchedule.mutate()}
-              className="rounded bg-emerald-500 px-3 py-1 text-sm text-white disabled:opacity-40"
+              className="rounded bg-positive px-3 py-1 text-sm text-white disabled:opacity-40"
             >
               Create schedule
             </button>
@@ -323,11 +323,11 @@ function PlanDetail({
         <div className="mb-4 print:hidden">
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
               <XAxis dataKey="month" fontSize={11} />
               <YAxis tickFormatter={(v) => fmt(v, { ...c, digits: 0 })} fontSize={11} width={70} />
               <Tooltip formatter={(v) => fmt(Number(v), c)} />
-              <Line type="monotone" dataKey="balance" name="Balance" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="balance" name="Balance" stroke="#7aa2f7" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -341,7 +341,7 @@ function PlanDetail({
       {sim.rows.length > 0 && (
         <div className="max-h-96 overflow-y-auto rounded border border-slate-200">
           <table className="w-full text-[13px]">
-            <thead className="sticky top-0 bg-white text-left text-[11px] tracking-wide text-slate-400 uppercase">
+            <thead className="sticky top-0 bg-panel text-left text-[11px] tracking-wide text-slate-400 uppercase">
               <tr className="border-b border-slate-200">
                 <th className="px-3 py-1.5">Month</th>
                 <th className="px-3 py-1.5 text-right">Payment</th>
@@ -437,7 +437,7 @@ function PlanEditor({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[85vh] w-[520px] flex-col rounded-xl bg-white p-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[85vh] w-[520px] flex-col rounded-xl bg-panel p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-slate-800">{plan ? 'Edit plan' : 'New plan'}</h2>
           <button onClick={onClose} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
@@ -511,7 +511,7 @@ function PlanEditor({
           <button
             disabled={!name.trim() || save.isPending}
             onClick={() => save.mutate()}
-            className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded bg-accent px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
           >
             {plan ? 'Save' : 'Create'}
           </button>

@@ -52,7 +52,7 @@ export default function CategoryRow({
       data-cat-row
       onClick={() => onSelect(cat.id, false)}
       className={`assign-row grid grid-cols-[36px_minmax(240px,1fr)_136px_136px_152px] min-h-[34px] items-center border-b border-slate-200 text-[13px] transition-colors duration-100 hover:bg-slate-50 ${
-        selected ? 'bg-blue-50 shadow-[inset_2px_0_0_#3b82f6] hover:bg-[#e6f0ff]' : ''
+        selected ? 'bg-blue-50 shadow-[inset_2px_0_0_#7aa2f7] hover:bg-blue-100' : ''
       }`}
     >
       <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
@@ -68,7 +68,7 @@ export default function CategoryRow({
           <div className="mt-0.5 flex max-w-[240px] items-center gap-2">
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-100">
               <div
-                className={`h-full rounded-full ${t.state === 'underfunded' ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                className={`h-full rounded-full ${t.state === 'underfunded' ? 'bg-amber-400' : 'bg-positive'}`}
                 style={{ width: `${Math.round(t.progress * 100)}%` }}
               />
             </div>

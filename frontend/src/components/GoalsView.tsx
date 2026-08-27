@@ -76,13 +76,13 @@ export default function GoalsView() {
   const allAccounts = meta.accounts.filter((a) => !a.closed)
 
   return (
-    <div className="flex h-full bg-white">
+    <div className="flex h-full bg-panel">
       <div className="flex w-80 shrink-0 flex-col border-r border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold text-slate-800">Goals</h1>
           <button
             onClick={() => setEditing('new')}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+            className="rounded bg-positive px-3 py-1.5 text-sm font-medium text-white hover:bg-positive-hover"
           >
             + New goal
           </button>
@@ -115,7 +115,7 @@ export default function GoalsView() {
                   <span className="text-[11px] text-slate-400">{Math.round(pct * 100)}%</span>
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct * 100}%` }} />
+                  <div className="h-full rounded-full bg-positive" style={{ width: `${pct * 100}%` }} />
                 </div>
                 <div className="mt-1 text-[11px] text-slate-400">
                   {g.monthlyContribution > 0 ? `${fmt(g.monthlyContribution, c)}/month` : 'no contribution set'}
@@ -283,7 +283,7 @@ function GoalDetail({
             <button
               disabled={!sourceId || !goal.categoryId || createSchedule.isPending}
               onClick={() => createSchedule.mutate()}
-              className="rounded bg-emerald-500 px-3 py-1 text-sm text-white disabled:opacity-40"
+              className="rounded bg-positive px-3 py-1 text-sm text-white disabled:opacity-40"
               title={goal.categoryId ? '' : 'The goal needs a funding category (edit it first)'}
             >
               Create schedule
@@ -302,11 +302,11 @@ function GoalDetail({
         <div className="mb-4 print:hidden">
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#282c3f" />
               <XAxis dataKey="month" fontSize={11} />
               <YAxis tickFormatter={(v) => fmt(v, { ...c, digits: 0 })} fontSize={11} width={70} />
               <Tooltip formatter={(v) => fmt(Number(v), c)} />
-              <Line type="monotone" dataKey="balance" name="Saved" stroke="#22c55e" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="balance" name="Saved" stroke="#9ece6a" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -375,7 +375,7 @@ function GoalEditor({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[85vh] w-[520px] flex-col rounded-xl bg-white p-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[85vh] w-[520px] flex-col rounded-xl bg-panel p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-slate-800">{goal ? 'Edit goal' : 'New goal'}</h2>
           <button onClick={onClose} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
@@ -460,7 +460,7 @@ function GoalEditor({
           <button
             disabled={!name.trim() || save.isPending}
             onClick={() => save.mutate()}
-            className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded bg-positive px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
           >
             {goal ? 'Save' : 'Create'}
           </button>

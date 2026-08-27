@@ -178,16 +178,16 @@ export default function SubscriptionsView() {
   }
 
   const input =
-    'w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500/35'
+    'w-full rounded-md border border-slate-300 bg-panel px-2.5 py-1.5 text-sm text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500/35'
   const label = 'text-xs font-medium text-slate-500'
 
   return (
-    <div className="flex h-full flex-col bg-[#f6f7f9]">
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
+    <div className="flex h-full flex-col bg-slate-50">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-panel px-6">
         <h1 className="text-[15px] font-semibold tracking-tight text-slate-900">Subscriptions</h1>
         <button
           onClick={openAdd}
-          className="rounded-md bg-emerald-600 px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-emerald-700"
+          className="rounded-md bg-positive px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-positive-hover"
         >
           + Add subscription
         </button>
@@ -200,7 +200,7 @@ export default function SubscriptionsView() {
           <button
             onClick={() => setCatFilter(new Set())}
             className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-              catFilter.size === 0 ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+              catFilter.size === 0 ? 'border-slate-300 bg-slate-300 text-slate-950' : 'border-slate-200 bg-panel text-slate-600 hover:bg-slate-100'
             }`}
           >
             All
@@ -210,7 +210,7 @@ export default function SubscriptionsView() {
               key={id}
               onClick={() => toggleCat(id)}
               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                catFilter.has(id) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                catFilter.has(id) ? 'border-slate-300 bg-slate-300 text-slate-950' : 'border-slate-200 bg-panel text-slate-600 hover:bg-slate-100'
               }`}
             >
               {name}
@@ -218,7 +218,7 @@ export default function SubscriptionsView() {
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-[var(--elev-subtle)]">
+        <div className="overflow-hidden rounded-[10px] border border-slate-200 bg-panel shadow-[var(--elev-subtle)]">
           <div className="grid h-8 grid-cols-[1.5fr_1.2fr_90px_100px_100px_100px_110px_120px_150px] items-center border-b border-slate-200 bg-slate-100 px-3 text-[11px] font-semibold tracking-[0.06em] text-slate-500 uppercase">
             <div className="px-3">Payee</div>
             <div className="px-3">Category</div>
@@ -343,7 +343,7 @@ export default function SubscriptionsView() {
       {open && (
         <div className="fixed inset-0 z-30 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-          <div className="relative z-10 flex w-[440px] flex-col gap-3 rounded-xl bg-white p-5 shadow-xl">
+          <div className="relative z-10 flex w-[440px] flex-col gap-3 rounded-xl bg-panel p-5 shadow-xl">
             <h2 className="text-[15px] font-semibold text-slate-800">{editingId ? 'Edit subscription' : 'Add subscription'}</h2>
             {error && <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>}
 
@@ -417,7 +417,7 @@ export default function SubscriptionsView() {
               <button
                 onClick={submit}
                 disabled={!form.payee.trim() && !form.categoryId}
-                className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+                className="rounded-md bg-positive px-3 py-1.5 text-sm font-medium text-white hover:bg-positive-hover disabled:opacity-40"
               >
                 {editingId ? 'Save' : 'Add'}
               </button>
