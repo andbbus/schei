@@ -71,6 +71,17 @@ OpenCode, …) appear here automatically.
 - `endMonth` is inclusive: occurrences with `monthOf(date) > endMonth` stop.
 - `nextDate` derives from `startMonth` only for NEW schedules; existing ones keep theirs.
 - The schedule walk lives in THREE places (register.ts materialize, cashflow.ts, expected.ts) — keep all in sync.
+- **Derived first charge is never "now"** (2026-08-27): creating a subscription mid-month with
+  `startMonth` = current month used to derive `nextDate = today` and `materializeDue` spawned a
+  real charge immediately — the budget demanded the money and deleting the subscription left the
+  orphan behind. Now derived dates land strictly after today; explicit `nextDate` may still
+  backfill past charges deliberately.
+- **Spawn marker**: auto-materialized transactions carry `importId = sched:<scheduleId>:<date>`
+  (distinct from the `bvr-csv:`/`tr-csv:` bank prefixes). `DELETE /scheduled/:id` soft-deletes
+  marked spawns dated ≥ today (today's = phantom; history stays) plus their transfer legs, and
+  returns `removedUpcoming` for the UI notice.
+- Pre-marker orphans (created before 2026-08-27) aren't auto-detectable — remove them by hand in
+  the register (dated today, the subscription's payee, category untouched).
 
 ## Files touched (expected)
 - `backend/prisma/schema.prisma`

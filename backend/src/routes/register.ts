@@ -198,7 +198,13 @@ interface TxnBody {
   flagColor?: string | null;
   transferAccountId?: string | null;
   subtransactions?: SubInput[];
+  importId?: string | null;
 }
+
+// Marker stamped on transactions auto-materialized from a schedule, so
+// deleting the schedule can find (and clean up) its own phantom charges.
+// Distinct from the bank-import prefixes (bvr-csv:/tr-csv:).
+export const schedMarker = (scheduleId: string, date: string) => `sched:${scheduleId}:${date}`;
 
 export interface SubInput {
   amount: number;
@@ -291,6 +297,7 @@ async function createTransaction(budgetId: string, b: TxnBody, tx: DbClient = pr
         categoryId: target.onBudget ? null : b.categoryId ?? null,
         transferAccountId: b.transferAccountId,
         payeeId: await transferPayee(budgetId, b.transferAccountId, tx),
+        importId: b.importId ?? null,
       },
     });
     const there = await tx.transaction.create({
@@ -304,6 +311,7 @@ async function createTransaction(budgetId: string, b: TxnBody, tx: DbClient = pr
         transferAccountId: b.accountId,
         transferTransactionId: here.id,
         payeeId: await transferPayee(budgetId, b.accountId, tx),
+        importId: b.importId ?? null,
       },
     });
     await tx.transaction.update({ where: { id: here.id }, data: { transferTransactionId: there.id } });
@@ -358,6 +366,7 @@ async function createTransaction(budgetId: string, b: TxnBody, tx: DbClient = pr
       flagColor: b.flagColor ?? null,
       categoryId,
       payeeId,
+      importId: b.importId ?? null,
     },
   });
 }
@@ -387,6 +396,7 @@ export async function materializeDue(budgetId: string) {
         payeeId: s.payeeId,
         transferAccountId: s.transferAccountId,
         cleared: 'uncleared',
+        importId: schedMarker(s.id, date),
       });
       date = nextOccurrence(s.frequency, date, s.anchorDay ?? undefined);
       if (s.endMonth && date && monthOf(date) > s.endMonth) date = null;
@@ -1332,9 +1342,18 @@ export default async function registerRoutes(app: FastifyInstance) {
     const payeeId = b.payeeId ?? (await resolvePayee(budget.id, patch.payeeName ?? b.payeeName));
     const categoryId = b.categoryId ?? patch.categoryId ?? null;
     const memo = patch.memo !== undefined ? patch.memo : (b.memo ?? null);
-    // New subscriptions: nextDate = first of startMonth, never backdating; monthly pins day 1.
-    const nextDate = b.nextDate ?? (b.startMonth ? (b.startMonth < today() ? today() : b.startMonth) : today());
+    // Derived next charge (no explicit nextDate — the Subscriptions path) is
+    // never "now": creating a subscription mid-month must not instantly
+    // materialize this month's fee. The first charge lands on startMonth-01
+    // when still ahead, otherwise on the next occurrence after today.
     const anchorDay = b.anchorDay ?? (b.frequency === 'monthly' && !b.nextDate ? 1 : b.anchorDay ?? null);
+    let nextDate: string;
+    if (b.nextDate) {
+      nextDate = b.nextDate; // explicit date may be today/past — deliberate backfill
+    } else {
+      const candidate = b.startMonth ? (b.startMonth < today() ? today() : b.startMonth) : today();
+      nextDate = candidate > today() ? candidate : (nextOccurrence(b.frequency, candidate, anchorDay ?? undefined) ?? candidate);
+    }
     return prisma.scheduledTransaction.create({
       data: {
         budgetId: budget.id,
@@ -1374,10 +1393,37 @@ export default async function registerRoutes(app: FastifyInstance) {
     return prisma.scheduledTransaction.update({ where: { id }, data });
   });
 
+  // Deleting a subscription also removes its not-yet-history phantom charges:
+  // transactions auto-materialized from this schedule (importId marker) dated
+  // today or later. Real history (past-dated spawns the user has lived with)
+  // stays. Today's spawn counts as phantom — it was created by the app's own
+  // first-fetch materialization, never typed by the user.
   app.delete('/scheduled/:id', async (req) => {
     const { id } = req.params as { id: string };
+    const budget = await getBudgetOrThrow();
+    const spawns = await prisma.transaction.findMany({
+      where: {
+        budgetId: budget.id,
+        importId: { startsWith: `sched:${id}:` },
+        deleted: false,
+        date: { gte: today() },
+      },
+      select: { id: true },
+    });
+    if (spawns.length > 0) {
+      const ids = spawns.map((t) => t.id);
+      // linked transfer legs may not carry the marker (imported pairs) — take them along
+      const legs = await prisma.transaction.findMany({
+        where: { transferTransactionId: { in: ids }, deleted: false },
+        select: { id: true },
+      });
+      await prisma.transaction.updateMany({
+        where: { id: { in: [...ids, ...legs.map((t) => t.id)] } },
+        data: { deleted: true },
+      });
+    }
     await prisma.scheduledTransaction.update({ where: { id }, data: { deleted: true } });
-    return { ok: true };
+    return { ok: true, removedUpcoming: spawns.length };
   });
 
   // Skip the next occurrence: advance nextDate without materializing a

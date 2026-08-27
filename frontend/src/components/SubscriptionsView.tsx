@@ -102,6 +102,7 @@ export default function SubscriptionsView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<SubForm>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['scheduled'] })
@@ -121,10 +122,15 @@ export default function SubscriptionsView() {
   })
   const del = useMutation({
     mutationFn: (id: string) => {
-      if (!window.confirm('Delete this subscription?')) return Promise.resolve({ ok: false })
+      if (!window.confirm('Delete this subscription? Any charge it auto-created for today or later is removed with it. Past charges stay in the register.'))
+        return Promise.resolve(null)
       return api.deleteScheduled(id)
     },
-    onSuccess: invalidate,
+    onSuccess: (r) => {
+      invalidate()
+      setNotice(r?.removedUpcoming ? `Subscription deleted — ${r.removedUpcoming} auto-created charge(s) removed.` : 'Subscription deleted.')
+      setError(null)
+    },
   })
   const skip = useMutation({ mutationFn: (id: string) => api.skipScheduled(id), onSuccess: invalidate })
 
@@ -345,6 +351,7 @@ export default function SubscriptionsView() {
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
           <div className="relative z-10 flex w-[440px] flex-col gap-3 rounded-xl bg-panel p-5 shadow-xl">
             <h2 className="text-[15px] font-semibold text-slate-800">{editingId ? 'Edit subscription' : 'Add subscription'}</h2>
+            {notice && <div className="rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{notice}</div>}
             {error && <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>}
 
             <label className="flex flex-col gap-1">

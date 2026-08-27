@@ -271,7 +271,7 @@ export const api = {
       }[]
     >(`/scheduled/suggestions${accountId ? `?accountId=${accountId}` : ''}`),
   updateScheduled: (id: string, b: Record<string, unknown>) => send('PATCH', `/scheduled/${id}`, b),
-  deleteScheduled: (id: string) => send('DELETE', `/scheduled/${id}`),
+  deleteScheduled: (id: string) => send<{ ok: boolean; removedUpcoming?: number }>('DELETE', `/scheduled/${id}`),
   createAccount: (b: Record<string, unknown>) => send('POST', '/accounts', b),
   reconcile: (accountId: string, balance: number) =>
     send<{ adjusted: number }>('POST', `/accounts/${accountId}/reconcile`, { balance }),
