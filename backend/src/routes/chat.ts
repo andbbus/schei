@@ -22,7 +22,14 @@ import { runQuickBudget } from './budget';
 import { createTransaction, TxnBody } from './register';
 
 const DEFAULT_BASE_URL = 'https://opencode.ai/zen/go/v1';
-export const DEFAULT_MODEL = process.env.CHAT_MODEL ?? 'deepseek-v4-flash';
+// Read at call time (not module load) so POST /setup/chat can live-update the
+// provider without a server restart.
+export function chatBaseUrl(): string {
+  return process.env.CHAT_BASE_URL?.trim() || DEFAULT_BASE_URL;
+}
+export function defaultModel(): string {
+  return process.env.CHAT_MODEL?.trim() || 'deepseek-v4-flash';
+}
 
 const HISTORY_LIMIT = 40;
 const MAX_TOOL_ROUNDS = 6;
@@ -511,9 +518,9 @@ async function callUpstream(
 }
 
 export default async function chatRoutes(app: FastifyInstance) {
-  const base = process.env.CHAT_BASE_URL ?? DEFAULT_BASE_URL;
+  // base/model resolve per-request (see chatBaseUrl/defaultModel above)
 
-  app.get('/chat/status', async () => ({ configured: chatConfigured(), defaultModel: DEFAULT_MODEL, tools: TOOLS.map((t) => t.function.name) }));
+  app.get('/chat/status', async () => ({ configured: chatConfigured(), defaultModel: defaultModel(), tools: TOOLS.map((t) => t.function.name) }));
 
   app.get('/chat/sessions', async () => {
     const budget = await getBudgetOrThrow();
@@ -538,7 +545,7 @@ export default async function chatRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid model id.' });
     }
     return prisma.chatSession.create({
-      data: { budgetId: budget.id, title: title?.trim() || 'New chat', model: model?.trim() || DEFAULT_MODEL },
+      data: { budgetId: budget.id, title: title?.trim() || 'New chat', model: model?.trim() || defaultModel() },
     });
   });
 
@@ -604,7 +611,7 @@ export default async function chatRoutes(app: FastifyInstance) {
     });
 
     const context = await buildBudgetContext(budget.id);
-    const useModel = model?.trim() || session.model || DEFAULT_MODEL;
+    const useModel = model?.trim() || session.model || defaultModel();
     const messages: { role: string; content: string; tool_call_id?: string; tool_calls?: ToolCall[] }[] = [
       { role: 'system', content: SYSTEM_PROMPT(context) },
       ...history,
@@ -617,12 +624,12 @@ export default async function chatRoutes(app: FastifyInstance) {
     let gaveUp = false;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const result = await callUpstream(base, apiKey()!, useModel, messages, TOOLS);
+      const result = await callUpstream(chatBaseUrl(), apiKey()!, useModel, messages, TOOLS);
 
       if (!result.ok) {
         if (result.toolsUnsupported && round === 0) {
           // model/gateway can't take tools — degrade to read-only chat
-          const plain = await callUpstream(base, apiKey()!, useModel, messages, null);
+          const plain = await callUpstream(chatBaseUrl(), apiKey()!, useModel, messages, null);
           if (!plain.ok) return reply.code(502).send({ error: plain.message });
           finalContent = plain.content;
           break;

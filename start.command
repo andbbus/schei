@@ -10,10 +10,11 @@ echo
 [ -d backend/node_modules ]  || { echo "Installing backend dependencies…";  npm --prefix backend install;  }
 [ -d frontend/node_modules ] || { echo "Installing frontend dependencies…"; npm --prefix frontend install; }
 
-# --- database (first run only) ---
+# --- database (first run only; the app's welcome wizard sets up the budget) ---
 if [ ! -f backend/prisma/dev.db ]; then
-  echo "Creating and seeding the database…"
-  ( cd backend && npm run db:push && npm run seed )
+  echo "Creating the SQLite database (first run)…"
+  ( cd backend && npm run db:push )
+  echo "→ A welcome wizard in the browser will guide you through the setup."
 fi
 
 # --- backup (this is the primary financial record — one snapshot per day, keep 14) ---

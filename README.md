@@ -1,124 +1,145 @@
 # ynab-clone
 
-A faithful replica of [YNAB](https://www.ynab.com/) (nYNAB): same UI/UX and the same
-budgeting engine. Single-user, local. Seeded from a real YNAB TSV export.
+A faithful local replica of [YNAB](https://www.ynab.com/) (nYNAB): the same
+budgeting engine, the same UX — plus an AI assistant, reports, a calendar and
+import automation. Single-user, **all local**, no cloud, no subscription.
 
 - **Frontend:** React + TypeScript + Vite + Tailwind v4 (`frontend/`)
-- **Backend:** Fastify + Prisma + SQLite, REST API shaped like YNAB's own (`backend/`)
-- **Money:** integer **milliunits** (1 unit = 1000), no floats — exactly like YNAB.
+- **Backend:** Fastify + Prisma + SQLite, REST API (`backend/`)
+- **Money:** integer **milliunits** (1 unit = 1000), no floats — exactly like YNAB
 
-## Features
+## Quick start
 
-**Budget** — category groups/categories CRUD (rename, hide, delete), per-month
-assign + Ready-to-Assign, available carryover (cash overspend → next month's
-RTA; credit overspend carries negative without touching RTA), targets
-(Monthly / Needed / Have-a-balance / By-date), 7 auto-assign modes, move money,
-inspector with notes, month navigation.
-
-**Register** — inflow/outflow/transfer/cleared, running balance, flags, payee
-autocomplete, reconciliation with balance adjustments, scheduled/recurring
-transactions (ghost rows, materialized when due), **full filter bar** (text,
-date range, category, payee, amount min/max, cleared state, flag), **bulk
-edit** (multi-select rows → reassign category/flag, delete — undoable), **CSV
-export** (locale-aware `;`/`,` delimiters, BOM) and **Print / Save-as-PDF**
-(print tables).
-
-**Shopping** — weekly supermarket offers with product thumbnails (Aldi Nord
-synced automatically from the angebote page — 234 products/week incl. images;
-Lidl's flyer is image-only and Netto is bot-protected, so import their weekly
-offers as CSV), catalog search, shopping lists with live cost estimates
-(price snapshots per item, quantity steppers, per-store totals) and emailing
-the list via SMTP (config in `backend/.env`). **Planned:** switch email
-delivery to **Agent Mail** (alternative to direct SMTP) — see
-`docs/IMPLEMENTATION-PLAN.md`.  
-
-**Reflect** — 7 tabs: Spending (donut + breakdown, account filter, click a
-category for its transactions), Net Worth, Income v Expense, Age of Money,
-**Budget vs Actual** (per-category assigned vs spent with utilization),
-**Cash Flow** (projected RTA from known schedules + trailing averages),
-**Debt & Savings** (money-weighted savings rate + loan payoff simulator).
-
-**Automation & safety** — **payee rules** (auto-categorize on entry and on
-import; apply to existing transactions), **payee management** (rename or merge
-payees to repair history — merge is undoable), **recurring-pattern
-suggestions** (detects monthly/weekly/biannual subscriptions and proposes
-schedules), **undo history** (one-click undo of assigns, moves, transactions,
-reconciles, deletes, merges — delta-based, composes in any order), **Debt
-plans** (persisted amortization plans with balance sync from tracking accounts
-and one-click payment schedules), **Goal plans** (savings targets with progress
-sync, required-contribution math and contribution schedules — both feed the
-Cash Flow projection).
-
-## Engine fidelity
-
-The budget engine is validated two independent ways against a real export:
-
-1. **Oracle** (`npm run oracle`): runs the engine on the export's transactions + assigned
-   amounts and compares **every** `Available` cell to YNAB's own `Plan.tsv` →
-   **594/594 cells match (100%)** across 22 months / 407 transactions.
-2. **Cash conservation:** Σ(category available) + Ready-to-Assign = Σ(on-budget account
-   balances), to the cent — which proves Ready-to-Assign is correct too.
-
-Key behaviours replicated: per-month/per-category available with positive carryover,
-cash overspend → next-month Ready-to-Assign (no negative carry), credit-card handling
-(funded card spending fills the card's payment category, unfunded card spending carries
-forward negative without touching RTA), future-dated ("upcoming") transactions excluded
-from activity until their date, Age of Money, targets, auto-assign, reconciliation with
-balance adjustments, scheduled/recurring transactions, tracking (off-budget) accounts.
-
-## Run it
-
-**One click:** double-click **`start.command`** in Finder. First run installs deps + seeds
-the DB, then starts both servers and opens the browser. Ctrl-C (or close the window) stops it.
-
-Or manually, two terminals:
+Prerequisite: [Node.js 20+](https://nodejs.org).
 
 ```bash
-# 1. backend  (http://localhost:3001)
-cd backend
-npm install
-npm run db:push      # create the SQLite schema (first time only)
-npm run seed         # import the YNAB export → ./prisma/dev.db
-npm run dev
+git clone https://github.com/andbbus/ynab-clone.git
+cd ynab-clone
+npm run setup     # installs backend + frontend deps, creates the SQLite DB
+npm start         # starts both servers and opens http://localhost:5173
+```
 
-# 2. frontend (http://localhost:5173)
-cd frontend
-npm install
+**First launch opens a welcome wizard** that walks you through:
+
+1. **Create your budget** — name, currency, number format, optional starter
+   categories (Bills / Everyday / Fun / Savings — rename or delete later).
+2. **Add your first account** — its current balance becomes **Ready to
+   Assign**, the money waiting for a job.
+3. **Set up the AI assistant** *(optional)* — pick a provider, paste an API
+   key, hit *Test connection*. Any OpenAI-compatible provider works
+   (OpenCode Zen, OpenAI, OpenRouter, Groq, a local Ollama, …). The key is
+   stored locally in `backend/.env` and never leaves your machine except to
+   call the provider you chose.
+
+Stop with `Ctrl-C`. Next time just `npm start` (macOS users can also
+double-click `start.command` in Finder).
+
+> Already using YNAB? You can import your real budget instead of the wizard —
+> see [Importing](#importing) below.
+
+## What's inside
+
+**Budget** — per-month assign + Ready-to-Assign, available carryover with
+YNAB's exact cash/credit overspend rules, credit-card payment categories,
+targets (monthly / needed-by / balance / by-date), **Auto-assign** dropdown
+(underfunded capped at RTA, average spent, …), move money, undo history.
+
+**Register** — inflow/outflow/transfer/cleared, running balance, flags, payee
+autocomplete, reconciliation, scheduled/recurring transactions, full filter
+bar, bulk edit, CSV export, print/PDF.
+
+**Reflect** — Spending, Net Worth (with a 12-month projection line), Income v
+Expense, Age of Money, Budget vs Actual, Cash Flow projection, Debt &
+Savings, **Anomalies** (flags charges that deviate sharply from the same
+payee's history — price hikes, double charges, unusual drops).
+
+**Calendar** — month grid of everything happening per day: scheduled
+occurrences and real transactions; add, edit and delete transactions right
+from the day rail.
+
+**AI assistant** — chats about *your* budget (ready to assign, category
+state, upcoming bills, unusual charges) and can **act** on it: assign or move
+money, cover overspending, create transactions — every AI action is logged
+and undoable from the History menu. Voice dictation included (Chrome).
+Sessions persist locally.
+
+**Automation** — payee rules (auto-categorize + rename + notes, applied on
+entry, on import and retroactively), payee rename/merge, recurring-pattern
+suggestions, duplicates finder, debt & goal plans, CSV auto-import with
+dialect sniffing (any bank), shopping lists with email, weekly digest email,
+Cmd+K command palette, 4 themes.
+
+## The AI assistant
+
+Configure it in the first-run wizard or later from the **Assistant page → ⚙**.
+
+| Provider | Base URL (pre-filled) | Needs |
+|---|---|---|
+| OpenCode Zen *(default)* | `https://opencode.ai/zen/go/v1` | an opencode key |
+| OpenAI | `https://api.openai.com/v1` | `sk-…` key |
+| OpenRouter | `https://openrouter.ai/api/v1` | `sk-or-…` key |
+| Groq | `https://api.groq.com/openai/v1` | `gsk_…` key |
+| Ollama (local) | `http://localhost:11434/v1` | nothing — install [Ollama](https://ollama.com) and `ollama pull llama3.1` |
+
+Model and key land in `backend/.env` (`CHAT_BASE_URL`, `CHAT_MODEL`,
+`CHAT_API_KEY`) — the same place the rest of the optional config lives (see
+[`backend/.env.example`](backend/.env.example)).
+
+## Optional automations
+
+All configured in `backend/.env` (restart the backend after editing):
+
+- **Folder watcher** — `IMPORT_WATCH_DIR=/path/to/csv/inbox`: drop a bank CSV
+  in the folder and it's sniffed, deduped and imported automatically. The
+  filename must start with the account name (e.g. `Account_2026-08.csv`).
+  Processed files move to `imported/`, dubious ones to `review/`.
+- **Weekly digest** — `DIGEST_ENABLED=1` + `DIGEST_TO=you@example.com`: an
+  email every Monday 08:00 with Ready to Assign, overspent/underfunded
+  categories, the next 7 days of bills, unusual charges and a 3-month trend.
+- **Shopping email / digest delivery** — AgentMail (`AGENTMAIL_API_KEY`) or
+  plain SMTP (`SMTP_HOST`, …).
+
+## Importing
+
+Coming from real YNAB? Export your budget
+([File → Export](https://support.ynab.com/en/us/ynab-export-a-guide)) and:
+
+```bash
+cd backend
+npm run db:push
+npm run import "/path/to/your-export-folder"   # Register.tsv + Plan.tsv
 npm run dev
 ```
 
-Open http://localhost:5173.
+The engine is validated against a real export two ways: an **oracle** that
+compares every `Available` cell to YNAB's own `Plan.tsv` (**594/594 — 100%**)
+and a **cash-conservation identity** (Σ categories + RTA = Σ on-budget
+balances, to the cent).
 
-### Commands
+Bank CSVs merge in-app from any account page (⋯ menu → Import CSV): the BVR
+and Trade Republic formats are built-in, anything else goes through
+**auto-detect** (delimiter, header, columns, date format and decimal
+separator are sniffed; you can override the mapping before importing).
+Duplicates are skipped, payee rules apply.
+
+More: [`docs/IMPORTING-AND-MERGING.md`](docs/IMPORTING-AND-MERGING.md).
+
+## Development
 
 | command | what |
 |---|---|
-| `backend npm test` | all backend test suites (engine + routes, assert-based) |
-| `frontend npm test` | frontend unit tests (vitest: filters, csv, bva, payoff) |
-| `backend npm run oracle` | validate engine vs the YNAB export's `Plan.tsv` |
-| `backend npm run seed` | wipe + re-import the export (idempotent) |
-| `backend npm run import "/path/to/export dir"` | import a specific YNAB export |
-| `backend npx tsx src/importCsv.ts "<file>" BVR` | merge an MainBank/BVR bank CSV |
-| `backend npx tsx src/importTradeRepublic.ts "<file>"` | merge a TR statement CSV |
-| `frontend npm run build` | typecheck (`tsc -b`) + production build |
+| `npm test --prefix backend` | all backend suites (engine + routes, ~25 files) |
+| `npm test --prefix frontend` | frontend unit tests (vitest) |
+| `npm run dev` (in `backend/` / `frontend/`) | the two servers individually |
+| `npm run build --prefix frontend` | typecheck + production build |
 
-More on importing and merging: [`docs/IMPORTING-AND-MERGING.md`](docs/IMPORTING-AND-MERGING.md).
-The feature-batch plan (and the debt-plans follow-up) is archived in
-[`docs/IMPLEMENTATION-PLAN.md`](docs/IMPLEMENTATION-PLAN.md).
+The engine lives in `backend/src/engine/` as pure functions; the database
+stores only inputs (transactions + monthly assigned) — everything else is
+derived on read. See [`CLAUDE.md`](CLAUDE.md) for the architecture tour.
 
-## Account on/off-budget
+## Privacy
 
-The TSV export does not carry account types, so tracking (off-budget) accounts are
-listed in `DEFAULT_TRACKING` in `backend/src/importYnab.ts`. Edit that map (or set the
-type via the UI) if a classification is wrong.
-
-## Scope
-
-**Included:** accounts (incl. credit cards with payment categories), register
-(filters, flags, payee autocomplete, CSV/PDF export), categories CRUD, assign +
-Ready-to-Assign, targets, auto-assign, move money, reconciliation, schedules,
-payee rules, pattern suggestions, undo history, the seven Reflect reports,
-debt plans.
-
-**Deferred:** file-import UI, split-transaction editor, multi-budget, auth /
-multi-device, bank sync.
+Your budget stays in a local SQLite file (`backend/prisma/dev.db`). The only
+outbound calls are the ones you configure: the AI provider you choose, the
+email delivery you set up, and the supermarket flyer sync. Backups land in
+`backups/`.

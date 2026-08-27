@@ -7,15 +7,17 @@ A faithful local replica of YNAB (nYNAB): same UI/UX, same budgeting engine. Sin
 ## Commands
 
 ```bash
-# one-click launch (installs deps + seeds on first run, starts both, opens browser)
-./start.command
+# one-click launch (installs deps + creates the DB on first run, starts both, opens browser)
+./start.command            # macOS double-click; same flow cross-platform via:
+npm start                  # root scripts/start-all.mjs (spawn + health-wait + browser open)
+npm run setup              # root: install deps + prisma db push, then exit (no seed)
 
 # backend (cwd: backend/) — Fastify + Prisma + SQLite on :3001
 npm run dev          # tsx watch src/server.ts
-npm test             # ALL suites: engine/* + routes/{ops,tools,debts,bulk,payees,goals}.test.ts (assert-based, tsx, no framework)
+npm test             # ALL suites: engine/* + routes/{ops,tools,debts,bulk,payees,goals,setup,...}.test.ts (assert-based, tsx, no framework)
 npm run oracle       # validate engine vs the real YNAB export's Plan.tsv (expect 100%)
 npm run db:push      # create/sync SQLite schema (no migrations)
-npm run seed         # WIPE all budgets + re-import the export (idempotent)
+npm run seed         # WIPE all budgets + re-import the export (idempotent; needs the export files — fresh clones don't have them, the in-app wizard takes that path)
 npm run import "/path/to/export dir"   # import a specific export
 npx tsc --noEmit -p .                  # typecheck
 
@@ -100,6 +102,18 @@ If you change engine math, re-run both.
   list/rename/delete; first exchange names the session. UI: `/assistant` (`AssistantView.tsx`,
   sidebar 🤖) with sessions rail, thread, optimistic user bubble, 🎙 dictation (Web Speech API,
   hidden when unsupported), delete-forever.
+- **`routes/setup.ts`** — first-run wizard backend: `GET /setup/status` (hasBudget + chat config state,
+  key only as last-4 tail), `POST /setup/budget` (creates the Budget with firstMonth = current month,
+  **always** the structural Inflow category, optional starter groups/categories; 409 when a budget
+  exists), `POST /setup/chat` (validates + `upsertEnv` writes CHAT_* into `backend/.env` — path from
+  `new URL('../.env', import.meta.url)`, `SETUP_ENV_FILE` overrides for tests — AND sets
+  `process.env` live, so no restart), `POST /setup/chat/test` (1-token probe against the provider,
+  applies body overrides first). chat.ts reads base/model via `chatBaseUrl()`/`defaultModel()` at
+  call time so live config changes take effect without restart. Frontend: `Welcome.tsx` wizard
+  (App.tsx renders it whenever `['setup'].hasBudget === false` and gates the budget query on it —
+  do NOT flip the setup cache mid-wizard, it unmounts the flow), provider form shared as
+  `AssistantConfigForm.tsx` (also the ⚙ modal in AssistantView). Scratch-port E2E:
+  `frontend/scripts/welcome-wizard-check.mjs` (VITE_API_TARGET/VITE_PORT proxy override).
 - **`routes/debts.ts`** — DebtPlan CRUD + `POST /debt-plans/:id/payment-schedule` (memo marker `Piano ammortamento: <planId>` for idempotency / `hasPaymentSchedule`; `frequency: monthly|once`). Schedule inputs are stored, amortization is derived client-side (`frontend/src/payoff.ts`).
 - **`routes/goals.ts`** — GoalPlan CRUD (mirror of DebtPlan: target/current,
   optional account + category link) + `POST /goal-plans/:id/contribution-schedule`

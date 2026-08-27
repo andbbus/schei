@@ -1,0 +1,14 @@
+{
+  "name": "ynab-clone",
+  "private": true,
+  "description": "A faithful local YNAB replica: same budgeting engine, AI assistant, reports — all local.",
+  "scripts": {
+    "setup": "node scripts/start-all.mjs --setup-only",
+    "start": "node scripts/start-all.mjs",
+    "test:backend": "npm test --prefix backend",
+    "test:frontend": "npm test --prefix frontend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

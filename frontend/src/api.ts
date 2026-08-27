@@ -218,6 +218,16 @@ export interface ScheduledRow {
 
 export const api = {
   budget: () => get<BudgetMeta>('/budget'),
+  setupStatus: () =>
+    get<{ hasBudget: boolean; chat: { configured: boolean; model: string; baseUrl: string; keyTail: string | null } }>(
+      '/setup/status',
+    ),
+  setupCreateBudget: (b: { name: string; currencySymbol: string; decimalDigits: number; locale: string; starterCategories: boolean }) =>
+    send<{ ok: boolean; budgetId: string }>('POST', '/setup/budget', b),
+  setupSaveChat: (b: { baseUrl?: string; model?: string; apiKey?: string }) =>
+    send<{ ok: boolean; configured: boolean; model: string }>('POST', '/setup/chat', b),
+  setupTestChat: (b: { baseUrl?: string; model?: string; apiKey?: string }) =>
+    send<{ ok: boolean; model: string; sample: string }>('POST', '/setup/chat/test', b),
   month: (m: string) => get<MonthView>(`/months/${m}`),
   expected: (months: number) => get<ExpectedData>(`/expected?months=${months}`),
   calendar: (month: string) =>

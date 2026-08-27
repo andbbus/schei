@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ChatMsg } from '../api'
 import { api, errMsg } from '../api'
+import AssistantConfigForm from './AssistantConfigForm'
 
 // Assistant — AI chat over the budget. Sessions persist server-side; deleting
 // a session removes its messages for good.
@@ -85,10 +86,13 @@ export default function AssistantView() {
   const [error, setError] = useState<string | null>(null)
   const [tools, setTools] = useState<{ name: string; summary: string }[]>([])
   const [listening, setListening] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [configMsg, setConfigMsg] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const recRef = useRef<{ stop: () => void } | null>(null)
 
   const { data: status } = useQuery({ queryKey: ['chat-status'], queryFn: api.chatStatus })
+  const { data: setup } = useQuery({ queryKey: ['setup'], queryFn: api.setupStatus })
   const { data: sessions } = useQuery({ queryKey: ['chat-sessions'], queryFn: api.chatSessions })
   const { data: messages } = useQuery({
     queryKey: ['chat-messages', activeId],
@@ -194,6 +198,13 @@ export default function AssistantView() {
         <div className="flex items-center gap-2">
           {active && <span className="text-[11px] text-slate-400">{active.model}</span>}
           <button
+            onClick={() => setShowConfig(true)}
+            title="Configure the AI provider"
+            className="rounded border border-slate-300 px-2 py-1.5 text-[13px] text-slate-500 transition-colors hover:bg-slate-100"
+          >
+            ⚙
+          </button>
+          <button
             onClick={() => newChat.mutate()}
             disabled={newChat.isPending}
             className="rounded bg-accent px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
@@ -204,9 +215,16 @@ export default function AssistantView() {
       </div>
 
       {status && !status.configured && (
-        <div className="mx-6 mt-3 rounded bg-red-50 px-3 py-2 text-xs text-red-600">
-          AI chat is not configured. Set <code>CHAT_API_KEY</code> (or <code>CHAT_API_KEY_FILE</code>) in{' '}
-          <code>backend/.env</code> and restart the backend.
+        <div className="mx-6 mt-3 flex items-center justify-between rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          <span>
+            AI chat is not configured — add an API key for your preferred provider to start chatting.
+          </span>
+          <button
+            onClick={() => setShowConfig(true)}
+            className="ml-3 shrink-0 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-amber-700"
+          >
+            Configure
+          </button>
         </div>
       )}
 
@@ -321,6 +339,43 @@ export default function AssistantView() {
           </div>
         </div>
       </div>
+
+      {showConfig && status && (
+        <div className="fixed inset-0 z-50 grid place-items-center" onClick={() => setShowConfig(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div
+            className="relative z-10 w-[440px] rounded-xl border border-slate-200 bg-panel p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-slate-900">Assistant provider</h2>
+              <button onClick={() => setShowConfig(false)} className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100">
+                ✕
+              </button>
+            </div>
+            <AssistantConfigForm
+              initial={{
+                model: setup?.chat.model ?? status?.defaultModel ?? '',
+                baseUrl: setup?.chat.baseUrl ?? '',
+                keyTail: setup?.chat.keyTail ?? null,
+                configured: status?.configured ?? false,
+              }}
+              onSaved={(msg) => {
+                setShowConfig(false)
+                setConfigMsg(msg)
+                qc.invalidateQueries({ queryKey: ['chat-status'] })
+                qc.invalidateQueries({ queryKey: ['setup'] })
+                setTimeout(() => setConfigMsg(null), 3000)
+              }}
+            />
+          </div>
+        </div>
+      )}
+      {configMsg && (
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-1.5 text-[12px] font-medium text-white shadow-lg">
+          {configMsg}
+        </div>
+      )}
     </div>
   )
 }

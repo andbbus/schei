@@ -4,11 +4,22 @@ import { api } from './api'
 import Sidebar from './components/Sidebar'
 import HistoryMenu from './components/HistoryMenu'
 import CommandPalette from './components/CommandPalette'
+import Welcome from './components/Welcome'
 
 export default function App() {
-  const { data, isLoading, error } = useQuery({ queryKey: ['budget'], queryFn: api.budget })
+  // first-run gate: a fresh clone has no budget yet → wizard instead of the shell
+  const { data: setup } = useQuery({ queryKey: ['setup'], queryFn: api.setupStatus })
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['budget'],
+    queryFn: api.budget,
+    // fetch the budget only once the setup gate has confirmed one exists
+    enabled: !!setup?.hasBudget,
+    retry: 1,
+  })
 
-  if (isLoading)
+  if (setup && !setup.hasBudget) return <Welcome />
+
+  if (isLoading || !setup)
     return <div className="flex h-full items-center justify-center text-slate-500">Loading budget…</div>
   if (error || !data)
     return (
