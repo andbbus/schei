@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { BudgetMeta } from '../api'
-import { api } from '../api'
+import { api, errMsg } from '../api'
 import { fmt, monthLabel, dateDisplay, type Currency } from '../format'
+import CalendarTxnEditor, { type EditorTarget } from './CalendarTxnEditor'
 
 // Calendar — a month grid of everything happening per day: scheduled
 // occurrences (expanded from the schedules) and real transactions, including
@@ -15,7 +16,12 @@ type CalItem = {
   payee: string
   amount: number
   category: string | null
+  categoryId: string | null
+  memo: string | null
   account: string | null
+  accountId: string | null
+  transfer: boolean
+  split: boolean
   source: 'scheduled' | 'txn'
   frequency: string | null
   scheduledId: string | null
@@ -25,6 +31,8 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function CalendarView() {
   const meta = useOutletContext<BudgetMeta>()
+  const qc = useQueryClient()
+  const navigate = useNavigate()
   const c: Currency = {
     symbol: meta.budget.currencySymbol,
     digits: meta.budget.decimalDigits,
@@ -32,8 +40,28 @@ export default function CalendarView() {
   }
   const [month, setMonth] = useState(meta.currentMonth)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [editor, setEditor] = useState<EditorTarget | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['calendar', month], queryFn: () => api.calendar(month) })
+  const { data: groups } = useQuery({ queryKey: ['categories'], queryFn: api.categories })
+  const { data: payees } = useQuery({ queryKey: ['payees'], queryFn: api.payees })
+  const { data: rules } = useQuery({ queryKey: ['payee-rules'], queryFn: api.payeeRules })
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['calendar', month] })
+    qc.invalidateQueries({ queryKey: ['budget'] })
+    qc.invalidateQueries({ queryKey: ['month'] })
+    qc.invalidateQueries({ queryKey: ['txns'] })
+    qc.invalidateQueries({ queryKey: ['ops'] })
+    qc.invalidateQueries({ queryKey: ['suggestions'] })
+  }
+
+  const del = useMutation({
+    mutationFn: (id: string) => api.deleteTxn(id),
+    onSuccess: () => refresh(),
+    onError: (e: Error) => alert(errMsg(e)),
+  })
 
   const idx = meta.months.indexOf(month)
   const canPrev = idx > 0
@@ -156,13 +184,21 @@ export default function CalendarView() {
         <div className="w-80 shrink-0 overflow-y-auto border-l border-slate-200 bg-panel p-4">
           {selectedDay ? (
             <>
-              <div className="mb-2 text-[14px] font-semibold text-slate-800">{dateDisplay(selectedDay)}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-[14px] font-semibold text-slate-800">{dateDisplay(selectedDay)}</div>
+                <button
+                  onClick={() => setEditor({ mode: 'create', date: selectedDay })}
+                  className="rounded bg-accent px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-accent-hover"
+                >
+                  + Add
+                </button>
+              </div>
               {selected.length === 0 ? (
-                <div className="text-[12px] text-slate-400">Nothing scheduled or recorded.</div>
+                <div className="mt-2 text-[12px] text-slate-400">Nothing scheduled or recorded.</div>
               ) : (
-                <div className="space-y-1.5">
+                <div className="mt-2 space-y-1.5">
                   {selected.map((item) => (
-                    <div key={item.id} className="rounded-md border border-slate-200 px-2.5 py-2">
+                    <div key={item.id} className="group rounded-md border border-slate-200 px-2.5 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-[13px] font-medium text-slate-700">{item.payee}</span>
                         <span className={`tnum shrink-0 text-[13px] font-semibold ${item.amount < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
@@ -175,6 +211,56 @@ export default function CalendarView() {
                         </span>
                         {item.category && <span className="truncate">{item.category}</span>}
                         {item.account && <span className="truncate">· {item.account}</span>}
+                        {item.source === 'txn' && (
+                          <span className="ml-auto flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            {(item.transfer || item.split) && item.accountId ? (
+                              <button
+                                title="Transfers and splits are edited in the register"
+                                onClick={() => navigate(`/accounts/${item.accountId}`)}
+                                className="rounded px-1 hover:bg-slate-100"
+                              >
+                                ↗
+                              </button>
+                            ) : (
+                              <button
+                                title="Edit"
+                                onClick={() =>
+                                  setEditor({
+                                    mode: 'edit',
+                                    id: item.id,
+                                    date: item.date,
+                                    accountId: item.accountId ?? undefined,
+                                    payee: item.payee,
+                                    categoryId: item.categoryId,
+                                    memo: item.memo,
+                                    amount: item.amount,
+                                  })
+                                }
+                                className="rounded px-1 hover:bg-slate-100"
+                              >
+                                ✎
+                              </button>
+                            )}
+                            <button
+                              title="Delete (undoable from the History menu)"
+                              onClick={() => {
+                                if (window.confirm(`Delete "${item.payee}" (${fmt(item.amount, c)})?`)) del.mutate(item.id)
+                              }}
+                              className="rounded px-1 text-red-500 hover:bg-red-50"
+                            >
+                              🗑
+                            </button>
+                          </span>
+                        )}
+                        {item.source === 'scheduled' && (
+                          <button
+                            title="Scheduled transactions are managed in Subscriptions"
+                            onClick={() => navigate('/subscriptions')}
+                            className="ml-auto shrink-0 rounded px-1 text-slate-300 opacity-0 transition-opacity hover:bg-slate-100 group-hover:opacity-100"
+                          >
+                            ↗
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -182,11 +268,34 @@ export default function CalendarView() {
               )}
             </>
           ) : (
-            <div className="mt-6 text-center text-[12px] text-slate-400">Click a day to see what happens on it.</div>
+            <div className="mt-6 text-center text-[12px] text-slate-400">Click a day to see or add what happens on it.</div>
           )}
           {isLoading && <div className="mt-4 text-[12px] text-slate-400">Loading…</div>}
         </div>
       </div>
+
+      {editor && (
+        <CalendarTxnEditor
+          target={editor}
+          accounts={meta.accounts}
+          groups={groups ?? []}
+          payees={payees ?? []}
+          rules={rules ?? []}
+          c={c}
+          onClose={() => setEditor(null)}
+          onSaved={(msg) => {
+            setEditor(null)
+            setNotice(msg)
+            refresh()
+            setTimeout(() => setNotice(null), 2500)
+          }}
+        />
+      )}
+      {notice && (
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-1.5 text-[12px] font-medium text-white shadow-lg">
+          {notice}
+        </div>
+      )}
     </div>
   )
 }

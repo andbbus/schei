@@ -229,7 +229,12 @@ export const api = {
         payee: string
         amount: number
         category: string | null
+        categoryId: string | null
+        memo: string | null
         account: string | null
+        accountId: string | null
+        transfer: boolean
+        split: boolean
         source: 'scheduled' | 'txn'
         frequency: string | null
         scheduledId: string | null

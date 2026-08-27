@@ -127,7 +127,7 @@ export default function expectedRoutes(app: FastifyInstance) {
       prisma.category.findMany({ where: { budgetId: budget.id } }),
       prisma.transaction.findMany({
         where: { budgetId: budget.id, deleted: false, date: { gte: from, lte: to } },
-        include: { payee: true, account: true, category: true },
+        include: { payee: true, account: true, category: true, subtransactions: { select: { id: true } } },
       }),
     ]);
     const catName = new Map(categories.map((c) => [c.id, c.isInflow ? 'Ready to Assign' : c.name]));
@@ -139,7 +139,12 @@ export default function expectedRoutes(app: FastifyInstance) {
       payee: string;
       amount: number;
       category: string | null;
+      categoryId: string | null;
+      memo: string | null;
       account: string | null;
+      accountId: string | null;
+      transfer: boolean;
+      split: boolean;
       source: 'scheduled' | 'txn';
       frequency: string | null;
       scheduledId: string | null;
@@ -155,7 +160,12 @@ export default function expectedRoutes(app: FastifyInstance) {
           payee: s.payee?.name ?? '?',
           amount: s.amount,
           category: s.categoryId ? (catName.get(s.categoryId) ?? null) : null,
+          categoryId: s.categoryId,
+          memo: s.memo,
           account: acctName.get(s.accountId) ?? null,
+          accountId: s.accountId,
+          transfer: false,
+          split: false,
           source: 'scheduled',
           frequency: s.frequency,
           scheduledId: s.id,
@@ -170,7 +180,12 @@ export default function expectedRoutes(app: FastifyInstance) {
         payee: t.payee?.name ?? '?',
         amount: t.amount,
         category: t.categoryId ? (catName.get(t.categoryId) ?? null) : null,
+        categoryId: t.categoryId,
+        memo: t.memo,
         account: t.account?.name ?? null,
+        accountId: t.accountId,
+        transfer: !!t.transferAccountId,
+        split: t.subtransactions.length > 0,
         source: 'txn',
         frequency: null,
         scheduledId: null,
