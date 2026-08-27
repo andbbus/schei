@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BudgetMeta, AccountLite } from '../api'
 import { api } from '../api'
 import { fmt, parseAmount, normalizeAmount, type Currency } from '../format'
+import OptionsModal from './OptionsModal'
 
 function NavItem({ to, label, icon, end }: { to: string; label: string; icon: string; end?: boolean }) {
   return (
@@ -40,6 +41,7 @@ function AccountItem({ a, c }: { a: AccountLite; c: Currency }) {
 
 export default function Sidebar({ meta }: { meta: BudgetMeta }) {
   const qc = useQueryClient()
+  const [showOptions, setShowOptions] = useState(false)
   const [adding, setAdding] = useState(false)
   const c: Currency = {
     symbol: meta.budget.currencySymbol,
@@ -121,11 +123,24 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
       </div>
 
       <div className="mt-auto border-t border-slate-200 px-2 pt-3 text-xs">
-        <div className="text-slate-400">Age of Money</div>
-        <div className="text-lg font-semibold text-slate-900">
-          {meta.ageOfMoney ?? '–'} <span className="text-sm font-normal text-indigo-200">days</span>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="text-slate-400">Age of Money</div>
+            <div className="text-lg font-semibold text-slate-900">
+              {meta.ageOfMoney ?? '–'} <span className="text-sm font-normal text-indigo-200">days</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowOptions(true)}
+            title="Options (themes)"
+            aria-label="Open options"
+            className="rounded px-1.5 py-1 text-base leading-none text-slate-400 transition-colors hover:bg-panel-hover/60 hover:text-slate-700"
+          >
+            ⚙
+          </button>
         </div>
       </div>
+      {showOptions && <OptionsModal onClose={() => setShowOptions(false)} />}
     </aside>
   )
 }

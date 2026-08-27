@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
+import { getTheme, setTheme } from './lib/theme'
+
+// pre-render theme so there's no flash of the default palette
+setTheme(getTheme())
 import App from './App'
 import BudgetView from './components/BudgetView'
 import AccountView from './components/AccountView'

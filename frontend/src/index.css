@@ -1,109 +1,324 @@
 @import 'tailwindcss';
 
 /*
- * LazyVim-inspired dark theme (TokyoNight Storm flavors).
- * The app's components reference Tailwind's neutral + status palettes, so the
- * entire UI re-themes from here: `slate` is the structural ramp (page, panels,
- * borders, foreground steps) and the concrete accent/status tints are mapped
- * to semantic tokens below. Keeping hues role-stable means dark mode is the
- * single source of truth — there is deliberately no light variant.
+ * Multi-theme design system (LazyVim-inspired, but softer).
+ *
+ * Every component keeps referencing Tailwind's neutral/status scales; this file
+ * maps those scales onto runtime-swappable role variables declared per theme:
+ *
+ *   [data-theme='tokyonight-storm']   soft dark   (default)
+ *   [data-theme='catppuccin-mocha']   warm dark
+ *   [data-theme='gruvbox-dark']       earthy dark
+ *   [data-theme='rose-pine-dawn']     light / paper
+ *
+ * Role contract inside each theme block (keep hues role-stable):
+ *   t50 = page background        t300/t400 = input & hover borders
+ *   t100 = sunken rows           t500      = dimmest text/icons
+ *   t200 = hairline borders      t900..950 = strongest foreground text
+ * Solids pair with text-white: accent/positive/negative/warning base tokens.
  */
 
+/* ---------------------------------------------------------------- tokens */
 @theme {
-  /* structural ramp (light-mode roles preserved: 50 = page bg … 950 = max fg) */
-  --color-slate-50: #16161e;
-  --color-slate-100: #1c1e2a;
-  --color-slate-200: #282c3f;
-  --color-slate-300: #3b4261;
-  --color-slate-400: #565f89;
-  --color-slate-500: #6b7399;
-  --color-slate-600: #9099c0;
-  --color-slate-700: #aab2da;
-  --color-slate-800: #c4cbef;
-  --color-slate-900: #d8ddf6;
-  --color-slate-950: #eceefc;
+  /* structural ramp */
+  --color-slate-50: var(--t50);
+  --color-slate-100: var(--t100);
+  --color-slate-200: var(--t200);
+  --color-slate-300: var(--t300);
+  --color-slate-400: var(--t400);
+  --color-slate-500: var(--t500);
+  --color-slate-600: var(--t600);
+  --color-slate-700: var(--t700);
+  --color-slate-800: var(--t800);
+  --color-slate-900: var(--t900);
+  --color-slate-950: var(--t950);
 
-  /* panels & chrome */
-  --color-panel: #1e2030;
-  --color-panel-hover: #252a3d;
+  /* panels */
+  --color-panel: var(--surface);
+  --color-panel-hover: var(--surface-2);
 
-  /* accent (LazyVim purple-blue) */
-  --color-accent: #4a6fd4;
-  --color-accent-hover: #587cdd;
-  --color-accent-bright: #8fb1ff;
+  /* semantic solids (pair with text-white) */
+  --color-accent: var(--acc-solid);
+  --color-accent-hover: var(--acc-solid-hover);
+  --color-accent-bright: var(--acc-bright);
+  --color-positive: var(--pos-solid);
+  --color-positive-hover: var(--pos-solid-hover);
+  --color-negative: var(--neg-solid);
+  --color-negative-hover: var(--neg-solid-hover);
+  --color-warning: var(--warn-solid);
 
-  /* status: positive / negative / warning */
-  --color-positive: #3f8f63;
-  --color-positive-hover: #4aa06f;
-  --color-positive-text: #8fdb9d;
-  --color-positive-bg: #16251c;
-  --color-positive-border: #2c4736;
+  /* concrete steps still referenced by components */
+  --color-blue-50: var(--acc-bg);
+  --color-blue-100: var(--acc-bg-2);
+  --color-blue-200: var(--acc-border);
+  --color-blue-300: var(--acc-border-strong);
+  --color-blue-400: var(--acc-mid);
+  --color-blue-500: var(--acc-text-dim);
+  --color-blue-600: var(--acc-text);
+  --color-blue-700: var(--acc-bright);
 
-  --color-negative: #b04a5c;
-  --color-negative-hover: #c0566a;
-  --color-negative-text: #f78ba0;
-  --color-negative-bg: #2a1519;
-  --color-negative-border: #55232c;
+  --color-emerald-50: var(--pos-bg);
+  --color-emerald-100: var(--pos-bg-2);
+  --color-emerald-200: var(--pos-border);
+  --color-emerald-400: var(--pos-mid);
+  --color-emerald-600: var(--pos-text);
+  --color-emerald-700: var(--pos-text-bright);
 
-  --color-warning: #b98a3f;
-  --color-warning-hover: #c9984a;
-  --color-warning-text: #e0af68;
-  --color-warning-bg: #251d10;
-  --color-warning-border: #4c3b1d;
+  --color-red-50: var(--neg-bg);
+  --color-red-100: var(--neg-bg-2);
+  --color-red-200: var(--neg-border);
+  --color-red-500: var(--neg-text);
+  --color-red-600: var(--neg-text-bright);
 
-  /* concrete Tailwind steps still referenced by components — remapped so
-     notices/pills/borders read correctly on the dark shell */
-  --color-blue-50: #1a2032;
-  --color-blue-100: #1e2539;
-  --color-blue-200: #2c3554;
-  --color-blue-300: #3d4b78;
-  --color-blue-400: #7aa2f7;
-  --color-blue-500: #6991e0;
-  --color-blue-600: #94afff;
-  --color-blue-700: #a9beff;
+  --color-amber-50: var(--warn-bg);
+  --color-amber-100: var(--warn-bg-2);
+  --color-amber-200: var(--warn-border);
+  --color-amber-400: var(--warn-mid);
+  --color-amber-600: var(--warn-text);
 
-  --color-emerald-50: #16251c;
-  --color-emerald-100: #1c2f23;
-  --color-emerald-200: #2c4736;
-  --color-emerald-400: #63bd82;
-  --color-emerald-600: #8fdb9d;
-  --color-emerald-700: #9ce0aa;
+  --color-indigo-100: var(--fg2);
+  --color-indigo-200: var(--fg3);
 
-  --color-red-50: #2a1519;
-  --color-red-100: #35191f;
-  --color-red-200: #55232c;
-  --color-red-500: #f7768e;
-  --color-red-600: #fa89a0;
-
-  --color-amber-50: #251d10;
-  --color-amber-100: #2f2514;
-  --color-amber-200: #4c3b1d;
-  --color-amber-400: #ff9e64;
-  --color-amber-600: #e0af68;
-
-  --color-indigo-100: #a9b1d6;
-  --color-indigo-200: #6b7399;
-
-  --color-purple-100: #232034;
-  --color-purple-700: #bb9af7;
+  --color-purple-100: var(--mauve-bg);
+  --color-purple-700: var(--mauve-text);
 }
 
-:root {
+/* ------------------------------------------------------- theme: storm */
+:root,
+[data-theme='tokyonight-storm'] {
   color-scheme: dark;
-  /* design tokens */
-  --surface-raised: #1e2030;
-  --surface-sunken: #171925;
-  --surface-hover: #252a3d;
-  --border-strong: #3b4261;
-  --muted: #565f89;
-  --fg-2: #a9b1d6;
-  --fg: #c0caf5;
-  --accent: #4a6fd4;
+  --t50: #20232f;
+  --t100: #252a38;
+  --t200: #31374d;
+  --t300: #414a68;
+  --t400: #616c95;
+  --t500: #79819f;
+  --t600: #96a0c4;
+  --t700: #adb5d8;
+  --t800: #c2c9e8;
+  --t900: #d5daf1;
+  --t950: #eaecfb;
+
+  --surface: #262b3c;
+  --surface-2: #303750;
+
+  --acc-solid: #4c6fce;
+  --acc-solid-hover: #587dda;
+  --acc-bright: #a3bdff;
+  --acc-bg: #232840;
+  --acc-bg-2: #292f4d;
+  --acc-border: #39426a;
+  --acc-border-strong: #47527f;
+  --acc-mid: #7aa2f7;
+  --acc-text-dim: #8ba4e8;
+  --acc-text: #9db4f4;
+
+  --pos-solid: #41805c;
+  --pos-solid-hover: #4a9067;
+  --pos-mid: #71c78f;
+  --pos-text: #93dba6;
+  --pos-text-bright: #a6e7b7;
+  --pos-bg: #1d2c22;
+  --pos-bg-2: #22342a;
+  --pos-border: #31503d;
+
+  --neg-solid: #ad4b60;
+  --neg-solid-hover: #bd556a;
+  --neg-text: #f291a6;
+  --neg-text-bright: #f8a5b6;
+  --neg-bg: #2b1a20;
+  --neg-bg-2: #34202a;
+  --neg-border: #57293a;
+
+  --warn-solid: #ab8845;
+  --warn-text: #e3bc76;
+  --warn-mid: #ff9e64;
+  --warn-bg: #2a2317;
+  --warn-bg-2: #332a1c;
+  --warn-border: #544225;
+
+  --mauve-bg: #2a2440;
+  --mauve-text: #bb9af7;
+}
+
+/* --------------------------------------------------- theme: mocha */
+[data-theme='catppuccin-mocha'] {
+  color-scheme: dark;
+  --t50: #1e1e2e;
+  --t100: #24243a;
+  --t200: #313145;
+  --t300: #45475a;
+  --t400: #6c7086;
+  --t500: #7f849c;
+  --t600: #a5adcb;
+  --t700: #bac2de;
+  --t800: #cbd3ee;
+  --t900: #dde1f5;
+  --t950: #f0f1fa;
+
+  --surface: #262637;
+  --surface-2: #313145;
+
+  --acc-solid: #5668b8;
+  --acc-solid-hover: #6174c6;
+  --acc-bright: #b4befe;
+  --acc-bg: #262840;
+  --acc-bg-2: #2c2f4b;
+  --acc-border: #3c4070;
+  --acc-border-strong: #484d85;
+  --acc-mid: #89b4fa;
+  --acc-text-dim: #97bffc;
+  --acc-text: #a6cbff;
+
+  --pos-solid: #4d8764;
+  --pos-solid-hover: #56986f;
+  --pos-mid: #94e2d5;
+  --pos-text: #a6e3a1;
+  --pos-text-bright: #b7efb3;
+  --pos-bg: #212a24;
+  --pos-bg-2: #27332c;
+  --pos-border: #365040;
+
+  --neg-solid: #b15577;
+  --neg-solid-hover: #bf6083;
+  --neg-text: #f5a0b7;
+  --neg-text-bright: #f9b3c7;
+  --neg-bg: #301f2a;
+  --neg-bg-2: #3a2533;
+  --neg-border: #59324a;
+
+  --warn-solid: #b08c4f;
+  --warn-text: #f9e2af;
+  --warn-mid: #fab387;
+  --warn-bg: #302a1e;
+  --warn-bg-2: #3a3225;
+  --warn-border: #5c5137;
+
+  --mauve-bg: #36294d;
+  --mauve-text: #cba6f7;
+}
+
+/* ----------------------------------------------------- theme: gruvbox */
+[data-theme='gruvbox-dark'] {
+  color-scheme: dark;
+  --t50: #282828;
+  --t100: #2d2d28;
+  --t200: #3c3836;
+  --t300: #504945;
+  --t400: #7c6f64;
+  --t500: #928374;
+  --t600: #bdae93;
+  --t700: #d5c4a1;
+  --t800: #ebdbb2;
+  --t900: #f2e5bc;
+  --t950: #fbf1c7;
+
+  --surface: #32302f;
+  --surface-2: #3c3836;
+
+  --acc-solid: #6f72a8;
+  --acc-solid-hover: #7c80ba;
+  --acc-bright: #d3869b;
+  --acc-bg: #2c2a3a;
+  --acc-bg-2: #333150;
+  --acc-border: #47436b;
+  --acc-border-strong: #565179;
+  --acc-mid: #83a598;
+  --acc-text-dim: #a9b665;
+  --acc-text: #b8bb26;
+
+  --pos-solid: #68854f;
+  --pos-solid-hover: #779659;
+  --pos-mid: #b8bb26;
+  --pos-text: #b9e05a;
+  --pos-text-bright: #cdea79;
+  --pos-bg: #252b1d;
+  --pos-bg-2: #2d3423;
+  --pos-border: #42492e;
+
+  --neg-solid: #b8524a;
+  --neg-solid-hover: #cc5c53;
+  --neg-text: #fb7061;
+  --neg-text-bright: #fc8a7d;
+  --neg-bg: #33201e;
+  --neg-bg-2: #3d2624;
+  --neg-border: #5c3733;
+
+  --warn-solid: #c08f31;
+  --warn-text: #fabd2f;
+  --warn-mid: #fe8019;
+  --warn-bg: #31291a;
+  --warn-bg-2: #3b3220;
+  --warn-border: #5c4c2d;
+
+  --mauve-bg: #363043;
+  --mauve-text: #d3869b;
+}
+
+/* ---------------------------------------------- theme: rose pine dawn */
+[data-theme='rose-pine-dawn'] {
+  color-scheme: light;
+  --t50: #faf4ed;
+  --t100: #f5ecdf;
+  --t200: #e8ddd0;
+  --t300: #dfccc4;
+  --t400: #c4b5ab;
+  --t500: #9893a5;
+  --t600: #797593;
+  --t700: #575279;
+  --t800: #454069;
+  --t900: #2f2c45;
+  --t950: #191724;
+
+  --surface: #fffaf3;
+  --surface-2: #f2e9e1;
+
+  --acc-solid: #56949f;
+  --acc-solid-hover: #4a8892;
+  --acc-bright: #2f6f70;
+  --acc-bg: #eef4ef;
+  --acc-bg-2: #e4efe8;
+  --acc-border: #cfdcd4;
+  --acc-border-strong: #b3c8bd;
+  --acc-mid: #56949f;
+  --acc-text-dim: #3e7f89;
+  --acc-text: #2a6b74;
+
+  --pos-solid: #618f6a;
+  --pos-solid-hover: #567f5e;
+  --pos-mid: #46795a;
+  --pos-text: #35674a;
+  --pos-text-bright: #2b5a3f;
+  --pos-bg: #ebf2ea;
+  --pos-bg-2: #e0ece0;
+  --pos-border: #c3d5c4;
+
+  --neg-solid: #b7564e;
+  --neg-solid-hover: #a84a42;
+  --neg-text: #b34a41;
+  --neg-text-bright: #9c3c34;
+  --neg-bg: #f7ebe8;
+  --neg-bg-2: #f2e0dc;
+  --neg-border: #dcc0ba;
+
+  --warn-solid: #c99d51;
+  --warn-text: #a5772f;
+  --warn-mid: #d7827e;
+  --warn-bg: #f6eee2;
+  --warn-bg-2: #f0e5d3;
+  --warn-border: #ddcbaa;
+
+  --mauve-bg: #ede7f3;
+  --mauve-text: #907aa9;
+}
+
+/* ------------------------------------------------------------ base */
+:root {
   --elev-subtle: none;
   --elev-raised: none;
-  --elev-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.65), 0 0 0 1px #282c3f;
-  --focus-ring: 0 0 0 2px rgba(122, 162, 247, 0.45);
-  --focus-ring-accent: 0 0 0 2px rgba(159, 219, 157, 0.4);
+  --elev-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--t200);
+  --focus-ring: 0 0 0 2px var(--acc-border-strong);
+  --focus-ring-accent: 0 0 0 2px var(--pos-border);
   --tracking-num: -0.01em;
   --motion-fast: 100ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -119,12 +334,12 @@ body {
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  background: var(--color-slate-50);
-  color: var(--fg);
+  background: var(--t50);
+  color: var(--t800);
 }
 
 ::selection {
-  background: rgba(74, 111, 212, 0.35);
+  background: var(--acc-border);
 }
 :focus-visible {
   outline: none;
@@ -132,14 +347,12 @@ body {
   border-radius: 3px;
 }
 
-/* monospace-first typography helpers: headings tighten up like ui.nvim floats */
 h1,
 h2,
 h3 {
   letter-spacing: -0.02em;
 }
 
-/* thin dark scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -148,12 +361,12 @@ h3 {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2e42;
+  background: var(--t200);
   border-radius: 5px;
-  border: 2px solid var(--color-slate-50);
+  border: 2px solid var(--t50);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b4261;
+  background: var(--t300);
 }
 
 @keyframes pop-in {
@@ -174,10 +387,10 @@ h3 {
   letter-spacing: var(--tracking-num);
 }
 
-/* sidebar: flat vim-panel, gradient removed */
+/* sidebar: flat vim-panel */
 .sidebar-grad {
-  background: var(--surface-sunken);
-  border-right: 1px solid var(--color-slate-200);
+  background: var(--surface);
+  border-right: 1px solid var(--t200);
 }
 
 /* inline-edit assigned cell */
@@ -193,7 +406,7 @@ h3 {
   font-family: inherit;
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-num);
-  color: var(--fg);
+  color: inherit;
   transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
 }
 .assign-input::-webkit-outer-spin-button,
@@ -202,45 +415,47 @@ h3 {
   margin: 0;
 }
 .assign-row:hover .assign-input {
-  border-color: var(--color-slate-300);
-  background: var(--surface-hover);
+  border-color: var(--t300);
+  background: var(--surface-2);
 }
 .assign-input:hover {
-  border-color: var(--muted);
+  border-color: var(--t400);
 }
 .assign-input:focus {
   outline: none;
-  background: var(--surface-hover);
-  border-color: var(--accent);
+  background: var(--surface-2);
+  border-color: var(--acc-solid);
   box-shadow: var(--focus-ring);
-  color: var(--color-slate-950);
   font-weight: 500;
 }
 
-/* checkbox accent follows the theme instead of Tailwind's blue */
-input[type='checkbox'] {
-  accent-color: var(--accent);
-}
+input[type='checkbox'],
 input[type='range'] {
-  accent-color: var(--accent);
+  accent-color: var(--acc-solid);
 }
 
-/* ---- print / Save-as-PDF ---- */
+/* ------------------------------------------------- print / Save-as-PDF */
 @page {
   size: A4 landscape;
   margin: 10mm;
 }
 @media print {
-  /* paper always gets the light ink treatment regardless of the dark shell */
-  :root {
+  :root,
+  [data-theme] {
     color-scheme: light;
-    --surface-raised: #ffffff;
-    --surface-sunken: #f1f3f5;
-    --surface-hover: #f6f7f9;
-    --border-strong: #d3d7de;
-    --muted: #8a94a6;
-    --fg-2: #344054;
-    --fg: #101828;
+    --t50: #ffffff;
+    --t100: #f1f3f5;
+    --t200: #e6e8ec;
+    --t300: #d3d7de;
+    --t400: #8a94a6;
+    --t500: #8a94a6;
+    --t600: #475467;
+    --t700: #344054;
+    --t800: #1d2939;
+    --t900: #101828;
+    --t950: #0d1117;
+    --surface: #ffffff;
+    --surface-2: #f6f7f9;
   }
   html,
   body,
@@ -264,5 +479,4 @@ input[type='range'] {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
-
 }
