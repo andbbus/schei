@@ -20,6 +20,9 @@
     "fsevents": true,
     "prisma": true
   },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
+  },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@prisma/client": "^6.2.1",

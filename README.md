@@ -155,8 +155,13 @@ derived on read. See [`CLAUDE.md`](CLAUDE.md) for the architecture tour.
   Prisma, esbuild and fsevents, so this is informational only. If npm ever
   blocks a script on a future major, run `npm install-scripts approve --all`
   after reviewing.
+- **Windows: `spawn EINVAL` on `npm start`** — fixed in the current version
+  (Node refuses to launch `npm.cmd` without a shell). Update with
+  `git pull`; no local action needed.
 - **`npm audit` shows high-severity findings** — run `npm audit fix` inside
   `backend/` and `frontend/`; current versions install clean (0 findings).
+  (The backend pins `deepmerge-ts` via an `overrides` field because its
+  vulnerable version comes in through Prisma's own dependency.)
 
 ## Privacy
 

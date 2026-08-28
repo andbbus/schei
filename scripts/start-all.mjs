@@ -87,11 +87,27 @@ if (setupOnly) {
 // --- servers ---
 const children = []
 let shuttingDown = false
+const win = process.platform === 'win32'
+const killTree = (c, sig) => {
+  if (!c.pid) return
+  if (win) {
+    // cmd.exe (npm.cmd via shell:true) doesn't forward signals — kill the tree.
+    spawn('taskkill', ['/pid', String(c.pid), '/T', '/F'], { stdio: 'ignore' })
+  } else {
+    // npm/tsx don't always forward signals to their children, so each server
+    // runs in its own process group and we signal the whole group.
+    try {
+      process.kill(-c.pid, sig)
+    } catch {
+      c.kill(sig)
+    }
+  }
+}
 const shutdown = (sig) => {
   if (shuttingDown) return
   shuttingDown = true
   console.log(`\n${sig} — stopping servers…`)
-  for (const c of children) c.kill(sig === 'SIGINT' ? 'SIGINT' : 'SIGTERM')
+  for (const c of children) killTree(c, sig === 'SIGINT' ? 'SIGINT' : 'SIGTERM')
   process.exit(0)
 }
 process.on('SIGINT', () => shutdown('SIGINT'))
@@ -102,13 +118,17 @@ const prefix = (name, color) => {
   return (data) => process.stdout.write(data.toString().split('\n').filter(Boolean).map((l) => `${c}[${name}]\x1b[0m ${l}\n`).join(''))
 }
 
+// shell:true is mandatory on Windows: npm is npm.cmd, and Node ≥18.20
+// refuses to spawn .cmd files without a shell (spawn EINVAL).
+// detached:true (POSIX) puts each child in its own process group so a
+// signal aimed at the launcher can take the whole server down with it.
 step('Starting backend on :3001…')
-children.push(spawn(npm, ['run', 'dev'], { cwd: backend, env: process.env }))
+children.push(spawn(npm, ['run', 'dev'], { cwd: backend, env: process.env, shell: win, detached: !win }))
 children[0].stdout.on('data', prefix('api', 'b'))
 children[0].stderr.on('data', prefix('api', 'b'))
 
 step('Starting frontend on :5173…')
-children.push(spawn(npm, ['run', 'dev'], { cwd: frontend, env: process.env }))
+children.push(spawn(npm, ['run', 'dev'], { cwd: frontend, env: process.env, shell: win, detached: !win }))
 children[1].stdout.on('data', prefix('web', 'c'))
 children[1].stderr.on('data', prefix('web', 'c'))
 
