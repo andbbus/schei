@@ -30,8 +30,17 @@ const sidebarHasAccounts = await page.evaluate(() =>
 )
 check('sidebar Accounts link', sidebarHasAccounts)
 
-const statCards = await page.evaluate(() => document.querySelectorAll('.mt-4 .rounded-lg').length)
-check('stat cards (on budget/tracking/net worth/accounts)', statCards === 4, `found ${statCards}`)
+const statOk = await page.evaluate(() =>
+  ['On budget', 'Tracking', 'Net worth'].every((label) =>
+    [...document.querySelectorAll('.uppercase')].some((e) => e.textContent === label),
+  ),
+)
+check('stat cards (on budget/tracking/net worth)', statOk)
+
+const headerCount = await page.evaluate(() =>
+  [...document.querySelectorAll('h1 ~ span, h1 + span')].some((e) => /open/.test(e.textContent)),
+)
+check('header open/closed count', headerCount)
 
 const rowCount = await page.evaluate(() => document.querySelectorAll('tbody tr').length)
 check('account rows rendered', rowCount > 0, `${rowCount} rows`)
