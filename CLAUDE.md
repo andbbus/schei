@@ -11,6 +11,7 @@ A faithful local replica of YNAB (nYNAB): same UI/UX, same budgeting engine. Sin
 ./start.command            # macOS double-click; same flow cross-platform via:
 npm start                  # root scripts/start-all.mjs (spawn + health-wait + browser open)
 npm run setup              # root: install deps + prisma db push, then exit (no seed)
+npm run icon               # root: (re)create the Desktop "YNAB Clone" launcher (auto on setup/first run)
 
 # backend (cwd: backend/) — Fastify + Prisma + SQLite on :3001
 npm run dev          # tsx watch src/server.ts

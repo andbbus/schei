@@ -5,6 +5,7 @@
   "scripts": {
     "setup": "node scripts/start-all.mjs --setup-only",
     "start": "node scripts/start-all.mjs",
+    "icon": "node scripts/desktop-icon.mjs",
     "test:backend": "npm test --prefix backend",
     "test:frontend": "npm test --prefix frontend"
   },

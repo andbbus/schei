@@ -11,6 +11,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import http from 'node:http'
+import { createDesktopIcon } from './desktop-icon.mjs'
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const backend = path.join(root, 'backend')
@@ -46,24 +47,40 @@ async function waitFor(url, label, tries = 120) {
 }
 
 // --- dependencies ---
+let firstRun = false
 if (!existsSync(path.join(backend, 'node_modules'))) {
+  firstRun = true
   step('Installing backend dependencies (first run)…')
   run(npm, ['install'], backend)
 }
 if (!existsSync(path.join(frontend, 'node_modules'))) {
+  firstRun = true
   step('Installing frontend dependencies (first run)…')
   run(npm, ['install'], frontend)
 }
 
 // --- database (first run: empty DB → the in-app welcome wizard takes over) ---
 if (!existsSync(path.join(backend, 'prisma', 'dev.db'))) {
+  firstRun = true
   step('Creating the SQLite database…')
   run(npm, ['run', 'db:push'], backend)
   console.log('  Done. First launch opens a welcome wizard that creates your budget.')
 }
 
+// --- desktop icon (first run / setup: a clickable launcher they can pin) ---
+if (setupOnly || firstRun) {
+  step('Adding a "YNAB Clone" icon to your Desktop…')
+  try {
+    const { where } = createDesktopIcon()
+    console.log(`  ✓ ${where}`)
+    console.log('  Double-click it to start the app — drag it to your Dock / taskbar to pin it.')
+  } catch (err) {
+    console.warn(`  ⚠ Skipped (${err.message})`)
+  }
+}
+
 if (setupOnly) {
-  console.log('\n✓ Setup complete — start the app with `npm start`.')
+  console.log('\n✓ Setup complete — start the app with `npm start` or the Desktop icon.')
   process.exit(0)
 }
 

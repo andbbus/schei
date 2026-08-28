@@ -31,8 +31,13 @@ npm start         # starts both servers and opens http://localhost:5173
    stored locally in `backend/.env` and never leaves your machine except to
    call the provider you chose.
 
-Stop with `Ctrl-C`. Next time just `npm start` (macOS users can also
-double-click `start.command` in Finder).
+Stop with `Ctrl-C`.
+
+**Setup also adds a "YNAB Clone" icon to your Desktop** (a real `.app` on
+macOS, a shortcut on Windows/Linux, with its own icon — generated locally, no
+assets downloaded). Double-click it to start everything; drag it to your Dock
+(macOS), taskbar (Windows) or app menu (Linux) to pin it. Missing or moved the
+repo? Recreate it anytime with `npm run icon`.
 
 > Already using YNAB? You can import your real budget instead of the wizard —
 > see [Importing](#importing) below.
