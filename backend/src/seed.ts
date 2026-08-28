@@ -1,14 +1,15 @@
-// Seed = import the real YNAB export. Idempotent: wipes existing budgets first.
-// Override the export location with YNAB_EXPORT_DIR or argv[2].
+// Seed = import a budget-app TSV export (YNAB format). Idempotent: wipes
+// existing budgets first.
+// Override the export location with BUDGET_EXPORT_DIR or argv[2].
 
 import { PrismaClient } from '@prisma/client';
-import { importYnabExport, DEFAULT_TRACKING } from './importYnab';
+import { importTsvExport, DEFAULT_TRACKING } from './importTsv';
 import { backupDb } from './backup';
 
 const args = process.argv.slice(2).filter((a) => a !== '--force');
 const DIR =
   args[0] ||
-  process.env.YNAB_EXPORT_DIR ||
+  process.env.BUDGET_EXPORT_DIR ||
   '/Users/user/Downloads/YNAB Export - My Budget as of 2026-06-28 21-01';
 
 async function main() {
@@ -29,7 +30,7 @@ async function main() {
     console.log(name ? `Backup: backups/${name}` : 'Backup unavailable — proceeding without a snapshot.');
   }
   await prisma.budget.deleteMany({}); // cascades to all data
-  const id = await importYnabExport(DIR, prisma, { trackingAccounts: DEFAULT_TRACKING });
+  const id = await importTsvExport(DIR, prisma, { trackingAccounts: DEFAULT_TRACKING });
   console.log(`\nSeeded budget ${id}`);
   await prisma.$disconnect();
 }

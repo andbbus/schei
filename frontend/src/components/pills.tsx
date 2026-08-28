@@ -1,6 +1,6 @@
 import type { TargetState } from '../api'
 
-// YNAB "Available" pill colouring.
+// "Available" pill colouring (green/amber/red).
 export function availablePill(available: number, target?: TargetState, overspendType?: string | null): string {
   if (available < 0)
     return overspendType === 'credit'

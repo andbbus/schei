@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Adds a ready-to-click "YNAB Clone" launcher to the user's Desktop, so the
+// Adds a ready-to-click "Schei" launcher to the user's Desktop, so the
 // app can be started (and pinned to the Dock / taskbar / app menu) without a
 // terminal. Called automatically by `npm run setup` / first `npm start`, and
 // on demand via `npm run icon` (also use it to refresh after moving the repo).
@@ -9,12 +9,12 @@
 //
 // Zero dependencies: the icon is generated with a small built-in PNG encoder
 // (zlib + manual chunks), then converted per platform —
-//   macOS:  "YNAB Clone.app" bundle (icns via sips + iconutil, png fallback);
+//   macOS:  "Schei.app" bundle (icns via sips + iconutil, png fallback);
 //           double-click runs start.command in Terminal (backup + servers +
 //           browser), and the .app can be dragged into the Dock or /Applications.
-//   Windows: "YNAB Clone.lnk" (via PowerShell) → start-windows.cmd,
+//   Windows: "Schei.lnk" (via PowerShell) → start-windows.cmd,
 //           iconified with assets/icon.ico (PNG-embedded; pin to taskbar).
-//   Linux:  "ynab-clone.desktop" on the Desktop + in ~/.local/share/applications.
+//   Linux:  "schei.desktop" on the Desktop + in ~/.local/share/applications.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, writeFileSync, chmodSync, rmSync, copyFileSync } from 'node:fs'
@@ -194,7 +194,7 @@ function ensureAssets() {
   return dir
 }
 
-const APP_NAME = 'YNAB Clone'
+const APP_NAME = 'Schei'
 
 function desktopPath() {
   if (outDir) {
@@ -268,7 +268,7 @@ function createMacApp(dest) {
   <key>CFBundleDisplayName</key><string>${APP_NAME}</string>
   <key>CFBundleExecutable</key><string>launch</string>
   <key>CFBundleIconFile</key><string>${iconFile.replace('.png', '').replace('.icns', '')}</string>
-  <key>CFBundleIdentifier</key><string>local.ynabclone.launcher</string>
+  <key>CFBundleIdentifier</key><string>local.schei.launcher</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundleVersion</key><string>1</string>
@@ -299,7 +299,7 @@ $lnk = $ws.CreateShortcut("${join(dest, APP_NAME + '.lnk').replace(/'/g, "''")}"
 $lnk.TargetPath = "${target.replace(/'/g, "''")}"
 $lnk.WorkingDirectory = "${root.replace(/'/g, "''")}"
 $lnk.IconLocation = "${join(assetsDir, 'icon.ico').replace(/'/g, "''")},0"
-$lnk.Description = "Start the YNAB Clone budget app"
+$lnk.Description = "Start the Schei budget app"
 $lnk.Save()
 `
   const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8' })
@@ -312,20 +312,20 @@ function createLinuxDesktop(dest) {
   const entry = `[Desktop Entry]
 Type=Application
 Name=${APP_NAME}
-Comment=Local budget app (YNAB-style)
+Comment=Local envelope-budgeting app
 Exec=/usr/bin/env bash -c 'cd "${root}" && node scripts/start-all.mjs'
 Path=${root}
 Icon=${join(assetsDir, 'icon.png')}
 Terminal=true
 Categories=Finance;Office;
 `
-  const files = [join(dest, 'ynab-clone.desktop')]
+  const files = [join(dest, 'schei.desktop')]
   writeFileSync(files[0], entry)
   const apps = join(homedir(), '.local/share/applications')
   try {
     mkdirSync(apps, { recursive: true })
-    writeFileSync(join(apps, 'ynab-clone.desktop'), entry)
-    files.push(join(apps, 'ynab-clone.desktop'))
+    writeFileSync(join(apps, 'schei.desktop'), entry)
+    files.push(join(apps, 'schei.desktop'))
   } catch {}
   return files.join(' + ')
 }

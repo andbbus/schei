@@ -1,9 +1,9 @@
 #!/bin/bash
-# Double-click this file in Finder to launch the YNAB-clone webapp.
+# Double-click this file in Finder to launch the Schei webapp.
 # First run installs dependencies and seeds the database; later runs just start it.
 
 cd "$(dirname "$0")" || exit 1
-echo "▶  YNAB-clone starter"
+echo "▶  Schei starter"
 echo
 
 # --- dependencies ---

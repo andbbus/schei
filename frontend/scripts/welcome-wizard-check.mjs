@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import { rmSync, existsSync } from 'node:fs'
 import puppeteer from 'puppeteer-core'
 
-const DB = `/tmp/ynab-wizard-e2e-${Date.now()}.db`
+const DB = `/tmp/schei-wizard-e2e-${Date.now()}.db`
 const BACKEND_PORT = 3002
 const FRONTEND_PORT = 5174
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'

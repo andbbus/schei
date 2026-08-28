@@ -7,7 +7,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import registerRoutes from './register';
 import opsRoutes from './ops';
 
-const DB = `/tmp/ynab-bulk-test-${Date.now()}.db`;
+const DB = `/tmp/schei-bulk-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

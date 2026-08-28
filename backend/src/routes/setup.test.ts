@@ -10,9 +10,9 @@ import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import Fastify, { FastifyInstance } from 'fastify';
 import setupRoutes from './setup';
 
-const DB = `/tmp/ynab-setup-test-${Date.now()}.db`;
+const DB = `/tmp/schei-setup-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
-const ENV = `/tmp/ynab-setup-test-${Date.now()}.env`;
+const ENV = `/tmp/schei-setup-test-${Date.now()}.env`;
 process.env.SETUP_ENV_FILE = ENV;
 delete process.env.CHAT_API_KEY;
 delete process.env.CHAT_BASE_URL;

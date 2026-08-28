@@ -1,4 +1,4 @@
-// YNAB-clone data model. Mirrors the shape of YNAB's public API.
+// Schei data model (envelope budgeting: budgets, accounts, months, categories).
 // Money is stored as integer milliunits (1 currency unit = 1000 milliunits).
 
 generator client {
@@ -125,7 +125,7 @@ model Category {
   paymentAccountId String?  @unique
   paymentAccount   Account? @relation("CardPaymentCategory", fields: [paymentAccountId], references: [id], onDelete: Cascade)
 
-  // Target / goal (YNAB goal_type: MF | NEED | TB | TBD)
+  // Target / goal (goal types: MF | NEED | TB | TBD)
   goalType             String?
   goalTarget           Int? // milliunits
   goalCadence          String? // monthly | weekly | yearly | byDate

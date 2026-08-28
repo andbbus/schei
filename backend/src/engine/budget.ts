@@ -1,10 +1,10 @@
-// The budgeting engine — replicates YNAB's per-month/per-category math.
+// The budgeting engine — per-month/per-category envelope math.
 //
 // Single source of truth = transactions + assigned amounts. Everything else
 // (activity, available, Ready-to-Assign) is DERIVED here, on read. No stored
 // denormalized balances to drift out of sync.
 //
-// Overspending comes in two flavours, exactly like YNAB:
+// Overspending comes in two flavours:
 //  - CASH overspend: does not carry negative; reduces next month's RTA.
 //  - CREDIT overspend (spending on a credit card past the category's funds):
 //    carries forward negative and does NOT touch RTA — the debt just stays
@@ -304,7 +304,7 @@ export function computeBudget(params: {
 }
 
 // Account balances for the sidebar / register (all accounts, on- or off-budget).
-// Future-dated transactions are split into `upcoming` (YNAB shows them separately).
+// Future-dated transactions are split into `upcoming` (shown separately).
 export function accountBalances(txns: EngineTxn[], asOf?: string): Record<string, AccountBalance> {
   const cutoff = asOf ?? '9999-12-31';
   const out: Record<string, AccountBalance> = {};

@@ -9,7 +9,7 @@ import forecastRoutes from './forecast';
 import opsRoutes from './ops';
 import { today } from '../engineLoad';
 
-const DB = `/tmp/ynab-forecast-test-${Date.now()}.db`;
+const DB = `/tmp/schei-forecast-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

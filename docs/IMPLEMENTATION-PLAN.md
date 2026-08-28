@@ -1,4 +1,4 @@
-# Implementation Plan — YNAB-clone Feature Batch (H1–H5, M6–M9)
+# Implementation Plan — Schei Feature Batch (H1–H5, M6–M9)
 
 Finalized after two rounds of adversarial review (9 reviewer agents, one per feature,
 round-2 confirmations folded in). Implementation order below; each feature is a

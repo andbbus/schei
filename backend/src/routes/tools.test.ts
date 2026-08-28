@@ -9,7 +9,7 @@ import registerRoutes, { materializeDue } from './register';
 import { today } from '../engineLoad';
 import { addMonths, monthOf } from '../engine/budget';
 
-const DB = `/tmp/ynab-tools-test-${Date.now()}.db`;
+const DB = `/tmp/schei-tools-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

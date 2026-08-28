@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { PrismaClient } from '@prisma/client';
-import { parseEuroMilli, parseEuDate } from './ynabFormat';
+import { parseEuroMilli, parseEuDate } from './tsvFormat';
 import { derivePatch } from './engine/payeeRules';
 
 interface CsvRow {
@@ -222,7 +222,7 @@ export async function importBankCsv(
   };
 
   // "Transfer : <Account>" payees carry transferAccountId and are the payee of
-  // choice for transfer transactions (real YNAB behaviour).
+  // choice for transfer transactions (mirroring the original app).
   const transferPayeeCache = new Map<string, string>();
   const ensureTransferPayee = async (acct: { id: string }, name: string): Promise<string> => {
     const key = `${acct.id}:${name}`;

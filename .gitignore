@@ -16,7 +16,8 @@ build/
 backend/prisma/*.db
 backend/prisma/*.db-journal
 
-# YNAB exports (personal financial data — never commit)
+# budget-app exports (personal financial data — never commit; patterns also
+# catch YNAB-format export folders)
 *.ynab*
 ynab-export/
 data/ynab/

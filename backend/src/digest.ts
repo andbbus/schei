@@ -206,7 +206,7 @@ export function buildDigest(d: DigestData): { subject: string; text: string; htm
     ),
   );
   htmlParts.push(`<h3>Last 3 months (income / expense)</h3><ul>${d.trend.map((t) => `<li>${t.month.slice(0, 7)}: ${eur(t.income)} / ${eur(-t.expense)}</li>`).join('')}</ul>`);
-  htmlParts.push(`<p style="color:#888;font-size:12px">Generated ${esc(dateLabel)} by your local YNAB-clone.</p>`);
+  htmlParts.push(`<p style="color:#888;font-size:12px">Generated ${esc(dateLabel)} by Schei, your local budget app.</p>`);
 
   return {
     subject: `Budget digest — ${d.budgetName} (${d.month.slice(0, 7)})`,

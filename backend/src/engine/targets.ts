@@ -1,4 +1,4 @@
-// Target (goal) math — YNAB Rule 2, "Embrace Your True Expenses".
+// Target (goal) math — "rule 2": set money aside for less-frequent expenses.
 // goal_type: MF (monthly funding), NEED (needed for spending), TB (target
 // balance), TBD (target balance by date).
 //

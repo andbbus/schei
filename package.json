@@ -1,7 +1,7 @@
 {
-  "name": "ynab-clone",
+  "name": "schei",
   "private": true,
-  "description": "A faithful local YNAB replica: same budgeting engine, AI assistant, reports — all local.",
+  "description": "Schei — local-first envelope budgeting: YNAB-style engine, AI assistant, reports, all on your machine.",
   "scripts": {
     "setup": "node scripts/start-all.mjs --setup-only",
     "start": "node scripts/start-all.mjs",

@@ -366,7 +366,7 @@ export default async function budgetRoutes(app: FastifyInstance) {
     return prisma.categoryGroup.update({ where: { id }, data });
   });
 
-  // Delete = soft delete, refused while the category still holds data (YNAB
+  // Delete = soft delete, refused while the category still holds data (the app
   // forces reassignment; we just say "hide it instead").
   app.delete('/categories/:id', async (req, reply) => {
     const { id } = req.params as { id: string };

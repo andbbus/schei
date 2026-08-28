@@ -708,7 +708,7 @@ function MultiSelect({
   )
 }
 
-// YNAB-style reconcile: confirm the cleared balance, or enter the real bank
+// Guided reconcile: confirm the cleared balance, or enter the real bank
 // balance and let the backend write the adjustment.
 function ReconcilePanel({
   clearedBalance,

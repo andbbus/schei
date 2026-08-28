@@ -11,7 +11,7 @@ import chatRoutes from './chat';
 process.env.CHAT_API_KEY = 'test-key';
 delete process.env.CHAT_MODEL;
 
-const DB = `/tmp/ynab-chat-test-${Date.now()}.db`;
+const DB = `/tmp/schei-chat-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

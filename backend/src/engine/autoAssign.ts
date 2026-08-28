@@ -54,7 +54,7 @@ export function autoAssignAmount(
 
 // Month-level "Underfunded" quick budget: fill every category's target
 // shortfall, but never assign more than Ready-to-Assign allows. Shortfalls are
-// funded largest-first (YNAB's ordering) and the last categories eat the
+// funded largest-first and the last categories eat the
 // remainder. Pure — the route turns the plan into upserts + one undo op.
 export interface UnderfundedItem {
   categoryId: string;

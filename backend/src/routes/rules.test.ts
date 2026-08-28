@@ -8,7 +8,7 @@ import Fastify, { FastifyInstance, type LightMyRequestResponse } from 'fastify';
 import registerRoutes from './register';
 import opsRoutes from './ops';
 
-const DB = `/tmp/ynab-rules-test-${Date.now()}.db`;
+const DB = `/tmp/schei-rules-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

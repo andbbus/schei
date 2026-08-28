@@ -69,7 +69,7 @@ if (!existsSync(path.join(backend, 'prisma', 'dev.db'))) {
 
 // --- desktop icon (first run / setup: a clickable launcher they can pin) ---
 if (setupOnly || firstRun) {
-  step('Adding a "YNAB Clone" icon to your Desktop…')
+  step('Adding a "Schei" icon to your Desktop…')
   try {
     const { where } = createDesktopIcon()
     console.log(`  ✓ ${where}`)

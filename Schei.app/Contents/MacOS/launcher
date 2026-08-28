@@ -1,5 +1,5 @@
 #!/bin/bash
-# YNAB Clone launcher: opens start.command in Terminal so server logs are
+# Schei launcher: opens start.command in Terminal so server logs are
 # visible and closing the window (or Ctrl-C) stops the servers.
 # Works from inside the repo OR if the .app is copied to /Applications:
 # falls back to the hardcoded repo path. ponytail: single-machine app.

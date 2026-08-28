@@ -1,20 +1,21 @@
-# ynab-clone
+# Schei
 
-A faithful local replica of [YNAB](https://www.ynab.com/) (nYNAB): the same
-budgeting engine, the same UX — plus an AI assistant, reports, a calendar and
-import automation. Single-user, **all local**, no cloud, no subscription.
+*Schei* (dialect for "money") — a local-first envelope-budgeting app in the
+spirit of YNAB: month-by-month assigning, Ready to Assign, cash/credit
+overspend handling — plus an AI assistant, reports, a calendar and import
+automation. Single-user, **all local**, no cloud, no subscription.
 
 - **Frontend:** React + TypeScript + Vite + Tailwind v4 (`frontend/`)
 - **Backend:** Fastify + Prisma + SQLite, REST API (`backend/`)
-- **Money:** integer **milliunits** (1 unit = 1000), no floats — exactly like YNAB
+- **Money:** integer **milliunits** (1 unit = 1000), no floats
 
 ## Quick start
 
 Prerequisite: [Node.js 20+](https://nodejs.org).
 
 ```bash
-git clone https://github.com/andbbus/ynab-clone.git
-cd ynab-clone
+git clone https://github.com/andbbus/schei.git
+cd schei
 npm run setup     # installs backend + frontend deps, creates the SQLite DB
 npm start         # starts both servers and opens http://localhost:5173
 ```
@@ -33,19 +34,19 @@ npm start         # starts both servers and opens http://localhost:5173
 
 Stop with `Ctrl-C`.
 
-**Setup also adds a "YNAB Clone" icon to your Desktop** (a real `.app` on
+**Setup also adds a "Schei" icon to your Desktop** (a real `.app` on
 macOS, a shortcut on Windows/Linux, with the app's piggy-bank icon from
 `assets/`). Double-click it to start everything; drag it to your Dock
 (macOS), taskbar (Windows) or app menu (Linux) to pin it. Missing or moved the
 repo? Recreate it anytime with `npm run icon`.
 
-> Already using YNAB? You can import your real budget instead of the wizard —
-> see [Importing](#importing) below.
+> Migrating from YNAB (or another budgeting app)? You can import your real
+> budget instead of the wizard — see [Importing](#importing) below.
 
 ## What's inside
 
-**Budget** — per-month assign + Ready-to-Assign, available carryover with
-YNAB's exact cash/credit overspend rules, credit-card payment categories,
+**Budget** — per-month assign + Ready to Assign, available carryover with
+strict cash/credit overspend rules, credit-card payment categories,
 targets (monthly / needed-by / balance / by-date), **Auto-assign** dropdown
 (underfunded capped at RTA, average spent, …), move money, undo history.
 

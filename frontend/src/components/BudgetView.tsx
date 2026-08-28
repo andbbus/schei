@@ -9,7 +9,7 @@ import CategoryRow from './CategoryRow'
 import Inspector from './Inspector'
 import ForecastPanel from './ForecastPanel'
 
-// Toolbar quick-budget actions (YNAB's "Auto-assign" dropdown). capRta clamps
+// Toolbar quick-budget actions (Auto-assign dropdown). capRta clamps
 // the underfunded plan to Ready-to-Assign, largest shortfall first.
 const QUICK_MODES: { mode: AutoAssignMode; capRta?: boolean; label: string; hint: string }[] = [
   { mode: 'underfunded', capRta: true, label: 'Underfunded', hint: 'Fill every target shortfall, capped at Ready to Assign' },

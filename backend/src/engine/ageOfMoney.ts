@@ -1,9 +1,9 @@
-// Age of Money — YNAB Rule 4. The median age (in days) of the dollars you spend.
+// Age of Money — "rule 4". The median age (in days) of the dollars you spend.
 //
 // ponytail: this is the standard FIFO approximation — income dollars queue
 // oldest-first, each outflow consumes from the oldest income, and a spend's age
 // is the amount-weighted age of the income it consumed. Age of Money = median
-// over the last 10 outflows. Good enough to display; the exact YNAB internal
+// over the last 10 outflows. Good enough to display; the exact original
 // figure can differ by a day or two. Refine only if it ever matters.
 
 import { EngineTxn, EngineAccount } from './types';

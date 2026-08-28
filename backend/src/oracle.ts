@@ -9,13 +9,13 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseTsv, parseEuroMilli, parseEuDate, parseMonthLabel, clearedFromLabel } from './ynabFormat';
+import { parseTsv, parseEuroMilli, parseEuDate, parseMonthLabel, clearedFromLabel } from './tsvFormat';
 import { computeBudget } from './engine/budget';
 import { EngineAccount, EngineCategory, EngineAssigned, EngineTxn } from './engine/types';
 
 const DEFAULT_DIR =
   process.argv[2] ||
-  process.env.YNAB_EXPORT_DIR ||
+  process.env.BUDGET_EXPORT_DIR ||
   '/Users/user/Downloads/YNAB Export - My Budget as of 2026-06-28 21-01';
 
 function findFile(dir: string, suffix: string): string {

@@ -38,7 +38,7 @@ const port = Number(process.env.PORT ?? 3001);
 app
   .listen({ port, host: '0.0.0.0' })
   .then(() => {
-    console.log(`YNAB-clone API → http://localhost:${port}`);
+    console.log(`Schei API → http://localhost:${port}`);
     // Optional daemons (both env-gated, both no-ops when unset):
     if (process.env.IMPORT_WATCH_DIR) startWatcher(process.env.IMPORT_WATCH_DIR);
     startDigestScheduler();

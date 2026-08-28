@@ -131,7 +131,7 @@ function parsePlainNumber(raw: string): number | null {
   return Number.isFinite(v) ? (neg ? -v : v) : null
 }
 
-// "2026-06-01" → "June 2026" (English month names — matches an English YNAB app).
+// "2026-06-01" → "June 2026" (English month names).
 export function monthLabel(month: string): string {
   const [y, m] = month.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })

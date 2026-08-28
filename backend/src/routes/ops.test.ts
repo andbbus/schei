@@ -9,7 +9,7 @@ import budgetRoutes from './budget';
 import registerRoutes from './register';
 import opsRoutes from './ops';
 
-const DB = `/tmp/ynab-ops-test-${Date.now()}.db`;
+const DB = `/tmp/schei-ops-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

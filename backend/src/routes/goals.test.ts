@@ -6,7 +6,7 @@ import { rmSync } from 'node:fs';
 import Fastify, { FastifyInstance } from 'fastify';
 import goalRoutes from './goals';
 
-const DB = `/tmp/ynab-goals-test-${Date.now()}.db`;
+const DB = `/tmp/schei-goals-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

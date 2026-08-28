@@ -8,7 +8,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import registerRoutes from './register';
 import { materializeDue, schedMarker } from './register';
 
-const DB = `/tmp/ynab-subs-test-${Date.now()}.db`;
+const DB = `/tmp/schei-subs-test-${Date.now()}.db`;
 process.env.DATABASE_URL = `file:${DB}`;
 execSync('npx prisma db push --skip-generate', { cwd: process.cwd() });
 

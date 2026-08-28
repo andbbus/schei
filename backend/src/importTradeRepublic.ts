@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { PrismaClient } from '@prisma/client';
-import { parseEuroMilli, parseEuDate } from './ynabFormat';
+import { parseEuroMilli, parseEuDate } from './tsvFormat';
 import { derivePatch } from './engine/payeeRules';
 
 const ACCOUNT_NAME = 'Investments';
