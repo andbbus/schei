@@ -7,6 +7,8 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  // backend/.env (gitignored) defines DATABASE_URL; scripts/ensure-env.mjs
+  // seeds it from .env.example on fresh clones so this always resolves.
   url      = env("DATABASE_URL")
 }
 

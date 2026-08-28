@@ -16,7 +16,7 @@ npm run setup              # root: install deps + prisma db push, then exit (no 
 npm run dev          # tsx watch src/server.ts
 npm test             # ALL suites: engine/* + routes/{ops,tools,debts,bulk,payees,goals,setup,...}.test.ts (assert-based, tsx, no framework)
 npm run oracle       # validate engine vs the real YNAB export's Plan.tsv (expect 100%)
-npm run db:push      # create/sync SQLite schema (no migrations)
+npm run db:push      # create/sync SQLite schema (no migrations; seeds .env from .env.example via scripts/ensure-env.mjs — dev/start/db:* scripts all do, fresh clones have no .env)
 npm run seed         # WIPE all budgets + re-import the export (idempotent; needs the export files — fresh clones don't have them, the in-app wizard takes that path)
 npm run import "/path/to/export dir"   # import a specific export
 npx tsc --noEmit -p .                  # typecheck

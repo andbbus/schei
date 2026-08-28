@@ -10,6 +10,10 @@
     "preview": "vite preview",
     "test": "vitest run"
   },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": true
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
     "react": "^19.2.7",

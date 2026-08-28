@@ -137,6 +137,21 @@ The engine lives in `backend/src/engine/` as pure functions; the database
 stores only inputs (transactions + monthly assigned) — everything else is
 derived on read. See [`CLAUDE.md`](CLAUDE.md) for the architecture tour.
 
+## Troubleshooting
+
+- **`Environment variable not found: DATABASE_URL`** — a fresh clone has no
+  `backend/.env` (it's gitignored because it holds API keys). Fixed in the
+  current version: every npm script that needs it seeds `.env` from
+  `.env.example` first (`backend/scripts/ensure-env.mjs`). If you're on an
+  older checkout, run `cp backend/.env.example backend/.env`.
+- **npm warns about install scripts** (`allowScripts`, npm ≥ 11.16) — the
+  repo ships an `allowScripts` allowlist in both `package.json`s covering
+  Prisma, esbuild and fsevents, so this is informational only. If npm ever
+  blocks a script on a future major, run `npm install-scripts approve --all`
+  after reviewing.
+- **`npm audit` shows high-severity findings** — run `npm audit fix` inside
+  `backend/` and `frontend/`; current versions install clean (0 findings).
+
 ## Privacy
 
 Your budget stays in a local SQLite file (`backend/prisma/dev.db`). The only
