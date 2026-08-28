@@ -241,7 +241,10 @@ export default async function shoppingRoutes(app: FastifyInstance) {
 
     const agentMailKey = agentMailApiKey();
     if (agentMailKey) {
-      const inbox = process.env.AGENTMAIL_INBOX?.trim() || 'user@agentmail.to';
+      const inbox = process.env.AGENTMAIL_INBOX?.trim();
+      if (!inbox) {
+        return reply.code(409).send({ error: 'AgentMail key is set but AGENTMAIL_INBOX is missing in backend/.env.' });
+      }
       const r = await fetch(`https://api.agentmail.to/v0/inboxes/${encodeURIComponent(inbox)}/messages/send`, {
         method: 'POST',
         headers: { authorization: `Bearer ${agentMailKey}`, 'content-type': 'application/json' },

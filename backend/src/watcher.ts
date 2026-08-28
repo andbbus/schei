@@ -2,7 +2,7 @@
 // server watches that folder for new .csv files, sniffs the dialect, applies
 // payee rules + dedup, and imports into the matching account. Account
 // resolution: the file name must START with the account name
-// ("MainAccount_2026-08.csv"), else IMPORT_WATCH_ACCOUNT is used. Processed
+// ("Account_2026-08.csv"), else IMPORT_WATCH_ACCOUNT is used. Processed
 // files move to <dir>/imported/ (or <dir>/review/ when confidence is low) so
 // fs.watch never re-fires on the same rows.
 

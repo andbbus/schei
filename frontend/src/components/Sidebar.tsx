@@ -66,7 +66,6 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
         <div className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded border border-blue-400/50 bg-transparent text-[11px] font-bold text-blue-400">yc</div>
         <div>
           <div className="text-[13px] font-semibold tracking-tight text-slate-900">{meta.budget.name}</div>
-          <div className="text-[11px] text-slate-400">Owner</div>
         </div>
       </div>
 

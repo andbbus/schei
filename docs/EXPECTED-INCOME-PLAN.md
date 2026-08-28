@@ -102,10 +102,9 @@ referenced files.
 - [x] Manual smoke via headless Chrome (pattern already used):
       `chrome --headless=new --remote-debugging-port=9222 http://localhost:5173/`
       + CDP evaluate to confirm the strip renders and a future month's preview shows
-      the December grant item. Verified: strip shows `Dec '26 · Income · +€1.208,00`;
-      December 2026 preview lists Claude Code, Student loan −€2.995 (once),
-      MainBank, Charity, OpenCode, Univ. Frankfurt, and the grant +€1.208
-      (upcoming); net −€1.833,90. (Both dev servers must be running.)
+      the scheduled income item. Verified: the strip shows a future income row and
+      the month preview lists its scheduled items (upcoming), with the correct net
+      total. (Both dev servers must be running.)
 
 ---
 

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { derivePatch, normalizePattern, PayeeRuleRow, pickCategory } from './payeeRules';
 
-const ALL = new Set(['cat-a', 'cat-b', 'cat-c', 'cat-x', 'cat-sub', 'cat-exact', 'cat-piu', 'cat-gott', 'cat-any', 'cat-t', 'cat-dead', 'cat-off', 'cat-re', 'cat-cat-on-canonical']);
+const ALL = new Set(['cat-a', 'cat-b', 'cat-c', 'cat-x', 'cat-sub', 'cat-exact', 'cat-piu', 'cat-cafe', 'cat-any', 'cat-t', 'cat-dead', 'cat-off', 'cat-re', 'cat-cat-on-canonical']);
 const row = (
   id: string,
   pattern: string,
@@ -10,7 +10,7 @@ const row = (
 ): PayeeRuleRow => ({ id, pattern, categoryId: 'cat-' + id, action: 'category', createdAt, ...over });
 
 export function test() {
-  assert.equal(normalizePattern('  ACME   Toscana '), 'acme toscana');
+  assert.equal(normalizePattern('  Jane   Doe '), 'jane doe');
   assert.equal(normalizePattern('=Lidl'), '=lidl');
 
   // legacy "=" prefix forces exact matching on the payee name; exact (more
@@ -27,9 +27,9 @@ export function test() {
   ];
   assert.equal(pickCategory('Lidl', dup, ALL, null), 'cat-b');
 
-  // Unicode case folding (Italian/German)
+  // Unicode case folding (Italian/French)
   assert.equal(pickCategory('PIÙ', [row('piu', 'più')], ALL, null), 'cat-piu');
-  assert.equal(pickCategory('FRANKFURT', [row('gott', 'frankfurt')], ALL, null), 'cat-gott');
+  assert.equal(pickCategory('CAFÉ', [row('cafe', 'café')], ALL, null), 'cat-cafe');
 
   // system payees and transfers never match
   for (const name of ['Starting Balance', 'Manual Balance Adjustment', 'Reconciliation Balance Adjustment']) {

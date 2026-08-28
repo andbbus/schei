@@ -33,7 +33,7 @@ export async function test() {
   assert.equal(pairs.length, 0);
 
   // unrelated names stay apart
-  pairs = findSimilarPayees([P('1', 'Aldi Nord', false), P('2', 'ACME', false)]);
+  pairs = findSimilarPayees([P('1', 'Aldi Nord', false), P('2', 'Jane Doe', false)]);
   assert.equal(pairs.length, 0);
 
   // a payee is a source at most once (best target wins)

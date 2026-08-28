@@ -11,15 +11,17 @@ import { parseTsv, parseEuroMilli, parseEuDate, parseMonthLabel, clearedFromLabe
 
 const INFLOW = 'Inflow: Ready to Assign';
 
-// The TSV export carries no account type / on-budget flag. These accounts are
-// tracking (off-budget) — confirmed by the cash-conservation identity reconciling
-// to the cent and by their transactions being only starting-balance / manual
-// adjustments (no budget income, no transfers). name → account type.
-export const DEFAULT_TRACKING: Record<string, string> = {
-  'Rent': 'otherLiability', // debt (confirmed)
-  MainAccount: 'otherLiability', // debt (confirmed)
-  TradeRepublic: 'otherAsset', // investments
-};
+// The TSV export carries no account type / on-budget flag. Which accounts are
+// tracking (off-budget) is user-specific, so the mapping comes from
+// backend/.env (`TRACKING_ACCOUNTS` as JSON, e.g.
+// {"Rent":"otherLiability"}) — never baked into the repo.
+export const DEFAULT_TRACKING: Record<string, string> = (() => {
+  try {
+    return JSON.parse(process.env.TRACKING_ACCOUNTS || '{}');
+  } catch {
+    return {};
+  }
+})();
 
 function findFile(dir: string, suffix: string): string {
   const f = fs.readdirSync(dir).find((n) => n.endsWith(suffix));
@@ -69,7 +71,7 @@ export async function importTsvExport(
 
   const budget = await prisma.budget.create({
     data: {
-      name: "My Budget",
+      name: 'Imported Budget',
       currencyIso: 'EUR',
       currencySymbol: '€',
       decimalDigits: 2,
@@ -175,10 +177,11 @@ export async function importTsvExport(
 }
 
 async function main() {
-  const dir =
-    process.argv[2] ||
-    process.env.BUDGET_EXPORT_DIR ||
-    '/Users/user/Downloads/YNAB Export - My Budget as of 2026-06-28 21-01';
+  const dir = process.argv[2] || process.env.BUDGET_EXPORT_DIR;
+  if (!dir) {
+    console.error('Usage: npm run import <export-dir>   (or set BUDGET_EXPORT_DIR in backend/.env)');
+    process.exit(1);
+  }
   const prisma = new PrismaClient();
   await importTsvExport(dir, prisma, { trackingAccounts: DEFAULT_TRACKING });
   await prisma.$disconnect();

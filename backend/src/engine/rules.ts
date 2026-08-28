@@ -6,7 +6,7 @@
 //
 // Conditions over: payeeName | memo | account. Ops: is/isNot, oneOf/notOneOf,
 // contains/doesNotContain, regex. All string matching is Unicode case-folded
-// ("PIÙ" → "più", "FRANKFURT" → "frankfurt") except regex, which matches the
+// ("PIÙ" → "più", "CAFÉ" → "café") except regex, which matches the
 // raw value case-insensitively.
 
 export type RuleField = 'payeeName' | 'memo' | 'account';

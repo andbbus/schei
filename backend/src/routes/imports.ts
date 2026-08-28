@@ -13,7 +13,7 @@ import { sniffCsv, parseCsvRows, CsvSpec } from '../csvSniff';
 import { importGenericRows } from '../importGeneric';
 
 export default async function importRoutes(app: FastifyInstance) {
-  // MainBank / BVR format (DATA;VALUTA;DARE;AVERE;...).
+  // BVR bank format (DATA;VALUTA;DARE;AVERE;...).
   app.post('/import/csv', async (req, reply) => {
     const b = req.body as { csv?: string; accountName?: string };
     const budget = await getBudgetOrThrow();

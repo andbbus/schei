@@ -29,3 +29,6 @@ data/ynab/
 *.log
 .vite/
 coverage/
+
+# machine-local editor/agent settings (personal paths, permissions)
+.claude/

@@ -64,7 +64,7 @@ export function requiredPayment(balance: number, tanPercent: number, months: num
 }
 
 // Savings rate helpers. Money-weighted windows (Σinc−Σexp)/Σinc — never an
-// average of per-month rates, which lumpy income (grant) would destroy.
+// average of per-month rates, which lumpy income (e.g. a yearly grant) would destroy.
 export function moneyWeightedRate(series: { income: number; expense: number }[]): number | null {
   const inc = series.reduce((s, x) => s + x.income, 0)
   const exp = series.reduce((s, x) => s + x.expense, 0)

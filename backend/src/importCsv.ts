@@ -1,5 +1,5 @@
 // Import an Italian bank CSV export (ListaMovimentiCsv) into a specific account.
-// Handles the MainBank / BVR CSV format: semicolon-delimited, European numbers,
+// Handles the BVR bank CSV format: semicolon-delimited, European numbers,
 // DD/MM/YYYY dates, DARE (debit) / AVERE (credit) columns.
 //
 // Usage: npx tsx src/importCsv.ts <csv-path> <account-name>
@@ -58,6 +58,25 @@ function isSummaryRow(desc: string): boolean {
     d.startsWith('disponibilit');
 }
 
+// Owner-specific payee derivation: bank memos are personal, so the memo →
+// payee name rules come from backend/.env (IMPORT_PAYEE_NAME_RULES as JSON,
+// e.g. [{"match":"MY BANK FEE","payee":"Bank fee"}]); merchant
+// "junk token" stripping likewise (IMPORT_MERCHANT_STRIP, e.g. ["DELBRÜCK"]).
+const PAYEE_NAME_RULES: { match: string; payee: string }[] = (() => {
+  try {
+    return JSON.parse(process.env.IMPORT_PAYEE_NAME_RULES || '[]') as { match: string; payee: string }[];
+  } catch {
+    return [];
+  }
+})();
+const MERCHANT_STRIP: string[] = (() => {
+  try {
+    return JSON.parse(process.env.IMPORT_MERCHANT_STRIP || '[]') as string[];
+  } catch {
+    return [];
+  }
+})();
+
 // Extract a clean payee name from the verbose bank description.
 function extractPayee(desc: string): string {
   // PAGAMENTO P.O.S. PAGOBANCOMAT DEL ... PRESSO {MERCHANT} CARTA ...
@@ -80,43 +99,42 @@ function extractPayee(desc: string): string {
   m = desc.match(/A fav:\s*(.+?)(?:\s+-\s+|\s+ID\.MSG)/i);
   if (m) return cleanMerchant(m[1]);
 
-  // Ordinante: {NAME} Causale: ... → extract from Causale
+  // Ordinante: {NAME} Causale: ... → named rules first, else the name
   if (/^Ordinante:/i.test(desc)) {
-    if (/ANTICIPI MOBILITA/i.test(desc)) return 'ACME';
-    if (/SCHOLARSHIP/i.test(desc)) return 'ACME';
-    if (/RIMBORSO IRPEF/i.test(desc)) return 'Agenzia delle Entrate';
-    // fall back to the ordinante name
+    const named = matchPayeeRule(desc);
+    if (named) return named;
     m = desc.match(/Ordinante:\s*(.+?)\s+Causale:/i);
     if (m) return cleanMerchant(m[1]);
   }
 
-  // CANONE MAINBANK
-  if (/CANONE MAINBANK/i.test(desc)) return 'MainBank';
+  // Owner-specific memo → payee rules from .env
+  return matchPayeeRule(desc) ?? cleanMerchant(desc.slice(0, 60));
+}
 
-  // COMM./SPESE OPERAZIONE ESTERO
-  if (/COMM\.\/SPESE OPERAZIONE ESTERO/i.test(desc)) return 'Commissione Estero';
-
-  // IMPOSTA DI BOLLO
-  if (/IMPOSTA DI BOLLO/i.test(desc)) return 'Imposta di Bollo';
-
-  // BONIFICO A VS. FAVORE Mangopay ... Marketplace TXI ...
-  if (/MARKETPLACE/i.test(desc)) return 'Marketplace (Mangopay)';
-
-  return cleanMerchant(desc.slice(0, 60));
+function matchPayeeRule(desc: string): string | null {
+  for (const r of PAYEE_NAME_RULES) {
+    try {
+      if (new RegExp(r.match, 'i').test(desc)) return r.payee;
+    } catch {
+      // malformed pattern from env — skip
+    }
+  }
+  return null;
 }
 
 function cleanMerchant(s: string): string {
-  return s
+  let out = s
     .replace(/\s+/g, ' ')
-    .replace(/\s*FRANKFURT\s*/gi, '')
-    .replace(/\s*G?TTINGEN\s*/gi, '')
-    .replace(/\s*PARIS\s*/gi, '')
-    .replace(/\s*WAGENINGEN\s*/gi, '')
-    .replace(/\s*WUNSTORF\s*/gi, '')
-    .replace(/\s*DELBR\s*CK\s*/gi, '')
-    .replace(/\s*GLOC\s*/gi, '')
-    .replace(/\s*VAV\s*/gi, '')
     .replace(/\s*\d+\s*$/g, '')
+    .trim();
+  for (const tok of MERCHANT_STRIP) {
+    try {
+      out = out.replace(new RegExp(`\\s*${tok}\\s*`, 'gi'), ' ');
+    } catch {
+      // malformed token from env — skip
+    }
+  }
+  return out
     .trim()
     .replace(/^.+?\s+\*\s*/, '') // "SUMUP *BRATWURST" → "BRATWURST"
     .replace(/\s+/g, ' ')
@@ -139,8 +157,12 @@ function extractMemo(desc: string): string {
   const sddRef = desc.match(/RIF\.\s+(.+?)\s+SCAD/);
   if (sddRef) return sddRef[1];
 
-  // For bonifico, extract the purpose
-  const bonRef = desc.match(/RICON\.\.1\.:\s*(.+?)\s*-\s*OWNER/i);
+  // For bonifico, extract the purpose. Bank memos often end with the account
+  // holder's name ("… - SURNAME"); strip it only when IMPORT_OWNER_NAME is set.
+  const ownerName = process.env.IMPORT_OWNER_NAME;
+  const bonRef = ownerName
+    ? desc.match(new RegExp(`RICON\\.\\.1\\.:\\s*(.+?)\\s*-\\s*${ownerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'))
+    : desc.match(/RICON\.\.1\.:\s*(.+)$/i);
   if (bonRef) return bonRef[1].trim();
 
   return '';
@@ -148,11 +170,17 @@ function extractMemo(desc: string): string {
 
 // Giroconti to the owner's own accounts are transfers between accounts, not
 // spending. Description marker → counterpart account name (must exist in the
-// budget). Each matched row creates a paired transaction on the counterpart.
-const TRANSFER_RULES: { match: RegExp; account: string }[] = [
-  { match: /giroconto su main bank/i, account: 'MainAccount' },
-  { match: /giroconto su traderepublic/i, account: 'Investments' },
-];
+// budget); each matched row creates a paired transaction on the counterpart.
+// This mapping is account-specific, so it comes from backend/.env
+// (IMPORT_TRANSFER_RULES as JSON, e.g. [{"match":"giroconto","account":"MainAccount"}]).
+const TRANSFER_RULES: { match: RegExp; account: string }[] = (() => {
+  try {
+    const raw = JSON.parse(process.env.IMPORT_TRANSFER_RULES || '[]') as { match: string; account: string }[];
+    return raw.map((r) => ({ match: new RegExp(r.match, 'i'), account: r.account }));
+  } catch {
+    return [];
+  }
+})();
 
 export interface ImportResult {
   imported: number;
@@ -256,9 +284,9 @@ export async function importBankCsv(
     seen.add(importId);
     runSeen.add(importId);
 
-    // The payee's transferAccountId points to the TARGET account: on the BVR
-    // side "Transfer : MainAccount" (transferAccountId = MainAccount), on the
-    // counterpart side "Transfer : BVR" (transferAccountId = BVR).
+    // The payee's transferAccountId points to the TARGET account: on the source
+    // side "Transfer : <counterpart>" (transferAccountId = counterpart), on the
+    // counterpart side "Transfer : <source>" (transferAccountId = source).
     const srcPayeeId = await ensureTransferPayee(counterpart, `Transfer : ${counterpart.name}`);
     const cpPayeeId = await ensureTransferPayee(account, `Transfer : ${account.name}`);
 

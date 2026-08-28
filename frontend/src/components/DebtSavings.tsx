@@ -79,7 +79,7 @@ export default function DebtSavings({ meta, range, c }: { meta: BudgetMeta; rang
       {/* ---- Savings rate ---- */}
       <h2 className="mb-2 font-semibold text-slate-700">Savings Rate</h2>
       <div className="mb-1 text-xs text-slate-400">
-        Money-weighted rate over trailing windows (never an average of monthly rates — lumpy income like the grant would
+        Money-weighted rate over trailing windows (never an average of monthly rates — lumpy income (e.g. a yearly grant) would
         distort it). Expense includes transfers to tracking accounts; uncategorized outflows are excluded; income is
         inflows to Ready to Assign. Current month shows activity to date.
       </div>

@@ -128,8 +128,6 @@ and Trade Republic formats are built-in, anything else goes through
 separator are sniffed; you can override the mapping before importing).
 Duplicates are skipped, payee rules apply.
 
-More: [`docs/IMPORTING-AND-MERGING.md`](docs/IMPORTING-AND-MERGING.md).
-
 ## Development
 
 | command | what |

@@ -4,7 +4,7 @@ import type { AccountLite, CsvSpec } from '../api'
 import { api, errMsg } from '../api'
 import { fmt, type Currency } from '../format'
 
-// Drag & drop CSV import: bank importer (MainBank/BVR), Trade Republic
+// Drag & drop CSV import: bank importer (BVR), Trade Republic
 // statement, or fully auto-detected dialect (sniffed server-side, with
 // editable column mapping before commit). The backend takes a timestamped DB
 // backup before writing.
@@ -137,7 +137,7 @@ export default function ImportCsvModal({
         </div>
         <div className="mb-3 text-xs text-slate-400">
           Merges bank movements with the register (dedup by importId + date/amount/payee). A timestamped DB snapshot is
-          taken automatically before importing. Formatting rules live in docs/IMPORTING-AND-MERGING.md.
+          taken automatically before importing.
         </div>
         {result && <div className="mb-2 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{result}</div>}
         {error && <div className="mb-2 rounded bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>}
@@ -154,7 +154,7 @@ export default function ImportCsvModal({
             }}
             className="rounded border border-slate-200 px-2 py-1.5 text-sm"
           >
-            <option value="bvr">Bank CSV (MainBank / BVR)</option>
+            <option value="bvr">Bank CSV (BVR)</option>
             <option value="tr">Trade Republic statement</option>
             <option value="auto">Auto-detect (any bank)</option>
           </select>

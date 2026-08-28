@@ -392,10 +392,10 @@ Implemented after the batch above.
   capped amortization table, schedule panel with source account / frequency /
   amount). PlanEditor modal for create/edit (tracking-account link or manual
   balance, TAN %, fixed-payment or payoff-by-date mode).
-- **Modeling note** (Student loan): a lump-sum closure is modeled as
-  manual balance = total residual including accrued interest (€2.988) with a
-  single `once` payment in December — linking the account would track capital
-  only (€2.500) and understate the closure amount.
+- **Modeling note** (student loan): a lump-sum closure is modeled as
+  manual balance = total residual including accrued interest with a
+  single `once` payment — linking the account would track capital
+  only and understate the closure amount.
 - **Tests**: `backend/src/routes/debts.test.ts` (CRUD, sync, schedule
   idempotency, past startMonth, validation) + `balanceAtMonth` in
   frontend `payoff.test.ts`.

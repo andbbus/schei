@@ -157,11 +157,14 @@ If you change engine math, re-run both.
 The seed is a real export (`Register.tsv` + `Plan.tsv`), Italian/European format. Parsers handle: **UTF-8 BOM**, tab-delimited quoted fields, **€ comma-decimal** (`-€17,99`, `€1.208,00`), **DD/MM/YYYY** dates, `"Jul 2025"` month labels. Two non-obvious things the importer must do:
 
 - **`Plan.tsv` omits "Inflow: Ready to Assign"** (you never assign to it). The importer also scans `Register.tsv` for categories, or income gets a null category and RTA breaks.
-- **Account types aren't in the TSV.** Off-budget (tracking) accounts are listed in `DEFAULT_TRACKING` in `importTsv.ts`. Confirmed for this budget: `Rent` + `MainAccount` = `otherLiability` (debts), `TradeRepublic` = `otherAsset` (investments). The cash-conservation identity only reconciles with these off-budget.
+- **Account types aren't in the TSV.** Which accounts are tracking (off-budget)
+  comes from `TRACKING_ACCOUNTS` (JSON, in `backend/.env`) — read via
+  `DEFAULT_TRACKING` in `importTsv.ts`; never hardcode the author's accounts in
+  the repo. The cash-conservation identity only reconciles with the right set.
 
 `oracle.ts` reuses the same parsers but runs the engine in memory (no DB), so it's the fastest way to test engine changes against real numbers.
 
-Incremental bank imports (`importCsv.ts`, `importTradeRepublic.ts`) **apply payee rules per row**: a matching rule beats the inflow fallback (`pickCategory(payeeName, rules, live, null) ?? inflow`), explicit categories from the TSV are never overridden. See `docs/IMPORTING-AND-MERGING.md`.
+Incremental bank imports (`importCsv.ts`, `importTradeRepublic.ts`) **apply payee rules per row**: a matching rule beats the inflow fallback (`pickCategory(payeeName, rules, live, null) ?? inflow`), explicit categories from the TSV are never overridden.
 
 ## Frontend data flow
 

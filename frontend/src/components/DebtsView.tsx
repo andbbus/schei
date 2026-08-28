@@ -449,7 +449,7 @@ function PlanEditor({
           <div className="grid grid-cols-2 gap-3">
             <label className={`${label} col-span-2`}>
               Name
-              <input value={name} onChange={(e) => setName(e.target.value)} className={input} placeholder="e.g. Student loan" />
+              <input value={name} onChange={(e) => setName(e.target.value)} className={input} placeholder="e.g. Car loan" />
             </label>
             <label className={`${label} col-span-2`}>
               Linked tracking account (balance syncs) — optional

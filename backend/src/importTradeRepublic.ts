@@ -1,10 +1,13 @@
-// Import a Trade Republic statement CSV into the "Investments" account.
-// The CSV is derived from the PDF statement (see docs/IMPORTING-AND-MERGING.md),
+// Import a Trade Republic statement CSV into the matching account.
+// The CSV is derived from the PDF statement.
 // format: DATA;IMPORTO;PAYEE;MEMO  (DD/MM/YYYY, signed EUR with comma decimals).
 // Money-market fund buy/sells are internal sweeps and never appear in the CSV
 // (they are not cash-ledger rows).
 //
 // Usage: npx tsx src/importTradeRepublic.ts <csv-path>
+//
+// The target account name is user-specific — set IMPORT_TR_ACCOUNT in
+// backend/.env (e.g. IMPORT_TR_ACCOUNT=Investments).
 
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -12,7 +15,7 @@ import { PrismaClient } from '@prisma/client';
 import { parseEuroMilli, parseEuDate } from './tsvFormat';
 import { derivePatch } from './engine/payeeRules';
 
-const ACCOUNT_NAME = 'Investments';
+const ACCOUNT_NAME = process.env.IMPORT_TR_ACCOUNT;
 
 // Rows whose memo starts with SKIP are known duplicates of transactions already
 // registered through another importer (e.g. the BVR -> TR giroconto imported as
@@ -69,6 +72,7 @@ export async function importTradeRepublicCsv(
   budgetId: string,
   text: string,
 ): Promise<ImportResult> {
+  if (!ACCOUNT_NAME) throw new Error('Set IMPORT_TR_ACCOUNT in backend/.env to the Trade Republic account name.');
   const account = await prisma.account.findFirst({
     where: { budgetId, name: ACCOUNT_NAME },
   });

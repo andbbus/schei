@@ -783,7 +783,7 @@ function CashFlow({ horizon, c, tip }: { horizon: number; c: Currency; tip: (v: 
         Income is <b>known only</b>: scheduled and upcoming inflows land in their month; nothing is averaged or
         guessed. Spending is projected from actual <b>Activity</b> (trailing averages over {data.historyMonths} completed
         months, adjusted for the same calendar month a year ago when the history supports it), not from what you
-        assign. Add any irregular income (e.g. the December grant) as a scheduled inflow so it lands in the right
+        assign. Add any irregular income (e.g. a yearly grant) as a scheduled inflow so it lands in the right
         month. Projected RTA = last month's RTA + known income − projected activity.
       </div>
 

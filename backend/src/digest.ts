@@ -241,7 +241,8 @@ export async function sendDigestEmail(subject: string, text: string, html: strin
   if (!recipient) throw new Error('No digest recipient — set DIGEST_TO (or SHOPPING_EMAIL_TO) in backend/.env.');
   const key = agentMailApiKey();
   if (key) {
-    const inbox = process.env.AGENTMAIL_INBOX?.trim() || 'user@agentmail.to';
+    const inbox = process.env.AGENTMAIL_INBOX?.trim();
+    if (!inbox) throw new Error('AgentMail key is set but AGENTMAIL_INBOX is missing in backend/.env.');
     const r = await fetch(`https://api.agentmail.to/v0/inboxes/${encodeURIComponent(inbox)}/messages/send`, {
       method: 'POST',
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },

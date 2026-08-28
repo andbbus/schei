@@ -1,10 +1,16 @@
 #!/bin/bash
 # Schei launcher: opens start.command in Terminal so server logs are
 # visible and closing the window (or Ctrl-C) stops the servers.
-# Works from inside the repo OR if the .app is copied to /Applications:
-# falls back to the hardcoded repo path. ponytail: single-machine app.
+# Keep this .app inside the repo root (next to start.command); if you move
+# it (e.g. to /Applications), run `npm run icon` to create a launcher that
+# points at the repo's current location.
 
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
-[ -f "$REPO/start.command" ] || REPO="/Users/user/Projects/ynab-clone"
+if [ ! -f "$REPO/start.command" ]; then
+  echo "Schei.app cannot find its repo (no start.command at $REPO)."
+  echo "Run 'npm run icon' from the repo to (re)create the launcher."
+  read -r -n1 -p "Press any key to close…"
+  exit 1
+fi
 
 open -a Terminal "$REPO/start.command"
