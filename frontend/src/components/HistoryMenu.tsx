@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, errMsg } from '../api'
 
+const DISMISS_KEY = 'history.dismissedAt'
+
 function timeAgo(iso: string): string {
   const s = (Date.now() - new Date(iso).getTime()) / 1000
   if (s < 60) return 'just now'
@@ -13,7 +15,30 @@ function timeAgo(iso: string): string {
 export default function HistoryMenu() {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  // The floating pill can be dismissed; it stays hidden (across reloads)
+  // until a NEW action is logged, i.e. an op newer than the one seen at
+  // dismiss time.
+  const [dismissedId, setDismissedId] = useState(() => {
+    try {
+      return Number(localStorage.getItem(DISMISS_KEY) ?? 0) || 0
+    } catch {
+      return 0
+    }
+  })
   const { data: ops } = useQuery({ queryKey: ['ops'], queryFn: api.ops })
+  const latestId = ops && ops.length > 0 ? Math.max(...ops.map((o) => o.id)) : 0
+  const visible = latestId > dismissedId
+
+  const dismiss = () => {
+    setDismissedId(latestId)
+    setOpen(false)
+    try {
+      localStorage.setItem(DISMISS_KEY, String(latestId))
+    } catch {
+      // private mode etc. — dismissal just won't survive reloads
+    }
+  }
+
   const undo = useMutation({
     mutationFn: (id: number) => api.undoOp(id),
     onSuccess: () => {
@@ -25,6 +50,8 @@ export default function HistoryMenu() {
     },
     onError: (e: Error) => alert(errMsg(e)),
   })
+
+  if (!visible) return null
 
   return (
     <div className="fixed top-20 right-4 z-40">
@@ -39,8 +66,15 @@ export default function HistoryMenu() {
         <>
           <div className="fixed inset-0" onClick={() => setOpen(false)} />
           <div className="absolute top-full right-0 mt-1 w-80 rounded-lg border border-slate-200 bg-panel py-1 shadow-lg">
-            <div className="border-b border-slate-100 px-3 py-1.5 text-[11px] tracking-wide text-slate-400 uppercase">
-              Recent actions
+            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-1.5">
+              <span className="text-[11px] tracking-wide text-slate-400 uppercase">Recent actions</span>
+              <button
+                onClick={dismiss}
+                title="Hide until the next change"
+                className="rounded px-1 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
             </div>
             {ops?.length === 0 && <div className="px-3 py-3 text-sm text-slate-400">Nothing to undo.</div>}
             {ops?.map((o) => (
