@@ -56,6 +56,7 @@ export interface BudgetMeta {
     dateFormat: string
     firstMonth: string
     lastMonth: string
+    inflowCategoryId?: string | null
     categoryLearning?: boolean
   }
   months: string[]

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo, useRef, useState, useEffect, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { BudgetMeta, CategoryView } from '../api'
@@ -8,6 +8,12 @@ import type { AutoAssignMode } from '../api'
 import CategoryRow from './CategoryRow'
 import Inspector from './Inspector'
 import ForecastPanel from './ForecastPanel'
+import Modal, { fieldInput, fieldLabel, ghostBtn, primaryBtn } from './Modal'
+
+type NameModalState =
+  | { mode: 'newGroup' }
+  | { mode: 'newCategory'; groupId: string; groupName: string }
+  | { mode: 'renameGroup'; groupId: string; name: string }
 
 // Toolbar quick-budget actions (Auto-assign dropdown). capRta clamps
 // the underfunded plan to Ready-to-Assign, largest shortfall first.
@@ -63,6 +69,7 @@ export default function BudgetView() {
   const idx = meta.months.indexOf(month)
   const [autoMenu, setAutoMenu] = useState(false)
   const [autoConfirm, setAutoConfirm] = useState<(typeof QUICK_MODES)[number] | null>(null)
+  const [nameModal, setNameModal] = useState<NameModalState | null>(null)
   const autoRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!autoMenu) return
@@ -156,13 +163,7 @@ export default function BudgetView() {
           )}
         </div>
 
-        <button
-          onClick={() => {
-            const name = window.prompt('Group name')?.trim()
-            if (name) groupOp.mutate(() => api.createGroup(name))
-          }}
-          className="rounded border border-slate-300 bg-panel px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100"
-        >
+        <button onClick={() => setNameModal({ mode: 'newGroup' })} className="rounded border border-slate-300 bg-panel px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100">
           + Category Group
         </button>
       </div>
@@ -209,20 +210,14 @@ export default function BudgetView() {
                             <span className="hidden shrink-0 gap-1 text-xs font-normal text-slate-400 group-hover:flex">
                               <button
                                 title="Add category"
-                                onClick={() => {
-                                  const name = window.prompt('Category name')?.trim()
-                                  if (name) groupOp.mutate(() => api.createCategory(g.id, name))
-                                }}
+                                onClick={() => setNameModal({ mode: 'newCategory', groupId: g.id, groupName: g.name })}
                                 className="rounded px-1 hover:bg-slate-200"
                               >
                                 +
                               </button>
                               <button
                                 title="Rename group"
-                                onClick={() => {
-                                  const name = window.prompt('Group name', g.name)?.trim()
-                                  if (name && name !== g.name) groupOp.mutate(() => api.patchGroup(g.id, { name }))
-                                }}
+                                onClick={() => setNameModal({ mode: 'renameGroup', groupId: g.id, name: g.name })}
                                 className="rounded px-1 hover:bg-slate-200"
                               >
                                 ✎
@@ -278,6 +273,26 @@ export default function BudgetView() {
         )}
       </div>
 
+      {nameModal && (
+        <NameDialog
+          title={
+            nameModal.mode === 'newCategory'
+              ? `New category in “${nameModal.groupName}”`
+              : nameModal.mode === 'newGroup'
+                ? 'New category group'
+                : 'Rename group'
+          }
+          label={nameModal.mode === 'newCategory' ? 'Category name' : 'Group name'}
+          initial={nameModal.mode === 'renameGroup' ? nameModal.name : ''}
+          onClose={() => setNameModal(null)}
+          onCommit={(name) => {
+            if (nameModal.mode === 'newGroup') groupOp.mutate(() => api.createGroup(name))
+            else if (nameModal.mode === 'newCategory') groupOp.mutate(() => api.createCategory(nameModal.groupId, name))
+            else if (name !== nameModal.name) groupOp.mutate(() => api.patchGroup(nameModal.groupId, { name }))
+            setNameModal(null)
+          }}
+        />
+      )}
       {autoConfirm && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/30" onClick={() => setAutoConfirm(null)}>
           <div
@@ -317,5 +332,46 @@ export default function BudgetView() {
         </div>
       )}
     </div>
+  )
+}
+
+// Centered name prompt for group/category create + group rename
+// (replaces the old window.prompt flow).
+function NameDialog({
+  title,
+  label,
+  initial,
+  onClose,
+  onCommit,
+}: {
+  title: string
+  label: string
+  initial: string
+  onClose: () => void
+  onCommit: (name: string) => void
+}) {
+  const [name, setName] = useState(initial)
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = name.trim()
+    if (trimmed) onCommit(trimmed)
+  }
+  return (
+    <Modal title={title} onClose={onClose} width={420}>
+      <form onSubmit={submit} className="flex flex-col gap-3.5">
+        <label className="block">
+          <span className={fieldLabel}>{label}</span>
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className={fieldInput} />
+        </label>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className={ghostBtn}>
+            Cancel
+          </button>
+          <button type="submit" disabled={!name.trim()} className={primaryBtn}>
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }

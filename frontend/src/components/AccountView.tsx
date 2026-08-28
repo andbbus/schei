@@ -13,6 +13,7 @@ import SuggestionsModal from './SuggestionsModal'
 import PayeesManager from './PayeesManager'
 import ImportCsvModal from './ImportCsvModal'
 import DuplicatesModal from './DuplicatesModal'
+import TransactionModal from './TransactionModal'
 
 const TRANSFER_PREFIX = 'Transfer : '
 
@@ -117,27 +118,20 @@ export default function AccountView() {
     qc.invalidateQueries({ queryKey: ['ops'] })
     qc.invalidateQueries({ queryKey: ['duplicates', id] })
   }
-  const create = useMutation({
-    // a "repeat" choice turns the new txn into a schedule instead
-    mutationFn: (b: Record<string, unknown>) =>
-      b.frequency
-        ? api.createScheduled({ ...b, accountId: id, nextDate: b.date })
-        : api.createTxn({ ...b, accountId: id }),
-    onSuccess: (_r, vars) => {
-      invalidate()
-      setAdding(false)
-      // category-learning hook: a hand-categorized plain txn with a typed
-      // payee may deserve an "always like this" rule (server does the gating)
-      const payeeName = typeof vars.payeeName === 'string' ? vars.payeeName.trim() : ''
-      const catId = typeof vars.categoryId === 'string' && vars.categoryId ? vars.categoryId : null
-      if (!vars.frequency && !vars.transferAccountId && payeeName && catId) {
-        setLearnAsk({ payee: payeeName, categoryId: catId })
-        setLearnDismissed(false)
-      } else {
-        setLearnAsk(null)
-      }
-    },
-  })
+  // learning-offer hook for the Add-transaction modal: a hand-categorized
+  // plain txn with a typed payee may deserve an "always like this" rule
+  // (server does the gating)
+  const afterCreate = (vars: Record<string, unknown>) => {
+    qc.invalidateQueries({ queryKey: ['duplicates', id] })
+    const payeeName = typeof vars.payeeName === 'string' ? vars.payeeName.trim() : ''
+    const catId = typeof vars.categoryId === 'string' && vars.categoryId ? vars.categoryId : null
+    if (!vars.frequency && !vars.transferAccountId && payeeName && catId) {
+      setLearnAsk({ payee: payeeName, categoryId: catId })
+      setLearnDismissed(false)
+    } else {
+      setLearnAsk(null)
+    }
+  }
   const update = useMutation({
     mutationFn: ({ t, b }: { t: TxnRow; b: Record<string, unknown> }) =>
       t.scheduledId ? api.updateScheduled(t.scheduledId, b) : api.updateTxn(t.id, b),
@@ -400,14 +394,11 @@ export default function AccountView() {
 
         <div className="flex-1 overflow-y-auto">
         {adding && (
-          <TxnEditor
-            groups={groups ?? []}
-            payees={payees ?? []}
-            accounts={otherAccounts}
-            rules={rules ?? []}
-            c={c}
-            onCancel={() => setAdding(false)}
-            onSave={(b) => create.mutate(b)}
+          <TransactionModal
+            meta={meta}
+            accountId={id}
+            onSaved={afterCreate}
+            onClose={() => setAdding(false)}
           />
         )}
         {editingRow && (

@@ -7,11 +7,12 @@ import { importTsvExport, DEFAULT_TRACKING } from './importTsv';
 import { backupDb } from './backup';
 
 const args = process.argv.slice(2).filter((a) => a !== '--force');
-const DIR = args[0] || process.env.BUDGET_EXPORT_DIR;
-if (!DIR) {
+const dirArg: string | undefined = args[0] || process.env.BUDGET_EXPORT_DIR;
+if (!dirArg) {
   console.error('Usage: npm run seed <export-dir>   (or set BUDGET_EXPORT_DIR in backend/.env)');
   process.exit(1);
 }
+const DIR: string = dirArg;
 
 async function main() {
   const prisma = new PrismaClient();

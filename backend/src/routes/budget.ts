@@ -170,6 +170,12 @@ export default async function budgetRoutes(app: FastifyInstance) {
     const budget = await getBudgetOrThrow();
     await materializeDue(budget.id); // spawn due scheduled txns before computing
     const { accounts, balances, ageOfMoney, months } = await loadComputation(budget.id);
+    // the structural income category — the Add-transaction dialog offers it
+    // for income entries ("Inflow: Ready to Assign")
+    const inflow = await prisma.category.findFirst({
+      where: { budgetId: budget.id, isInflow: true, deleted: false },
+      select: { id: true },
+    });
     return {
       budget: {
         id: budget.id,
@@ -180,6 +186,7 @@ export default async function budgetRoutes(app: FastifyInstance) {
         dateFormat: budget.dateFormat,
         firstMonth: budget.firstMonth,
         lastMonth: budget.lastMonth,
+        inflowCategoryId: inflow?.id ?? null,
       },
       months,
       currentMonth: clampMonth(today(), budget.firstMonth, budget.lastMonth),

@@ -13,11 +13,12 @@ import { parseTsv, parseEuroMilli, parseEuDate, parseMonthLabel, clearedFromLabe
 import { computeBudget } from './engine/budget';
 import { EngineAccount, EngineCategory, EngineAssigned, EngineTxn } from './engine/types';
 
-const DEFAULT_DIR = process.argv[2] || process.env.BUDGET_EXPORT_DIR;
-if (!DEFAULT_DIR) {
+const dirArg: string | undefined = process.argv[2] || process.env.BUDGET_EXPORT_DIR;
+if (!dirArg) {
   console.error('Usage: npm run oracle <export-dir>   (or set BUDGET_EXPORT_DIR in backend/.env)');
   process.exit(1);
 }
+const DEFAULT_DIR: string = dirArg;
 
 function findFile(dir: string, suffix: string): string {
   const f = fs.readdirSync(dir).find((n) => n.endsWith(suffix));

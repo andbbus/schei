@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { BudgetMeta } from '../api'
 import { api, errMsg } from '../api'
 import { THEMES, setTheme, getTheme } from '../lib/theme'
+import { undoLastChange } from '../lib/undo'
+import { formatBinding, isApple, loadBindings, type ActionId } from '../shortcuts'
 
 // Cmd+K / Ctrl+K command palette: navigation, theme switching, undo, digest.
 // LazyVim-style: keyboard-first, fuzzy-filtered, arrow keys + Enter.
@@ -42,19 +44,24 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Opened by the central shortcut dispatcher (App.tsx) — the palette
+  // shortcut itself is rebindable in the ShortcutsModal.
   useEffect(() => {
+    const onToggle = () => {
+      setOpen((v) => !v)
+      setQuery('')
+      setCursor(0)
+      setError(null)
+    }
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setOpen((v) => !v)
-        setQuery('')
-        setCursor(0)
-        setError(null)
-      }
       if (e.key === 'Escape') setOpen(false)
     }
+    window.addEventListener('schei:palette', onToggle)
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('schei:palette', onToggle)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   useEffect(() => {
@@ -66,7 +73,16 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
       navigate(to)
       setOpen(false)
     }
+    const dispatch = (event: string) => () => {
+      window.dispatchEvent(new CustomEvent(event))
+      setOpen(false)
+    }
+    const bindingHint = (id: ActionId) => {
+      const b = loadBindings()[id]
+      return b ? formatBinding(b, isApple()) : undefined
+    }
     const cmds: Cmd[] = [
+      { id: 'add-transaction', label: 'Add transaction', hint: bindingHint('addTransaction'), keywords: 'new expense income quick entry', run: dispatch('schei:add-txn') },
       { id: 'nav-budget', label: 'Go to Budget', keywords: 'home', run: go('/') },
       { id: 'nav-accounts', label: 'Go to Accounts', keywords: 'overview balances', run: go('/accounts') },
       { id: 'nav-reflect', label: 'Go to Reflect', keywords: 'reports charts', run: go('/reflect') },
@@ -76,6 +92,7 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
       { id: 'nav-goals', label: 'Go to Goals', keywords: 'savings', run: go('/goals') },
       { id: 'nav-shopping', label: 'Go to Shopping', keywords: 'groceries lists', run: go('/shopping') },
       { id: 'nav-assistant', label: 'Go to Assistant', keywords: 'ai chat', run: go('/assistant') },
+      { id: 'customize-shortcuts', label: 'Customize shortcuts', hint: bindingHint('shortcuts'), keywords: 'keyboard keys bindings hotkeys settings', run: dispatch('schei:shortcuts') },
     ]
     for (const a of meta.accounts) {
       cmds.push({ id: `acct-${a.id}`, label: `Go to ${a.name}`, hint: a.onBudget ? 'account' : 'tracking', run: go(`/accounts/${a.id}`) })
@@ -95,20 +112,11 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
     cmds.push({
       id: 'undo',
       label: 'Undo last change',
+      hint: bindingHint('undo'),
       keywords: 'history revert',
       run: async () => {
-        try {
-          const ops = await api.ops()
-          if (ops.length > 0) {
-            await api.undoOp(ops[0].id)
-            for (const key of ['ops', 'budget', 'month', 'categories', 'txns']) {
-              qc.invalidateQueries({ queryKey: [key] })
-            }
-          }
-          setOpen(false)
-        } catch (e) {
-          setError(errMsg(e as Error))
-        }
+        await undoLastChange(qc)
+        setOpen(false)
       },
     })
     cmds.push({
