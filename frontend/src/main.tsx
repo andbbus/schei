@@ -9,6 +9,7 @@ import { getTheme, setTheme } from './lib/theme'
 setTheme(getTheme())
 import App from './App'
 import BudgetView from './components/BudgetView'
+import AccountsView from './components/AccountsView'
 import AccountView from './components/AccountView'
 import ReflectView from './components/ReflectView'
 import DebtsView from './components/DebtsView'
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <BudgetView /> },
+      { path: 'accounts', element: <AccountsView /> },
       { path: 'accounts/:id', element: <AccountView /> },
       { path: 'reflect', element: <ReflectView /> },
       { path: 'debts', element: <DebtsView /> },

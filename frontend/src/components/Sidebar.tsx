@@ -71,6 +71,7 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
 
       <nav className="flex flex-col gap-0.5">
         <NavItem to="/" label="Budget" icon="📊" end />
+        <NavItem to="/accounts" label="Accounts" icon="🏦" end />
         <NavItem to="/reflect" label="Reflect" icon="📈" />
         <NavItem to="/debts" label="Debts" icon="📉" />
         <NavItem to="/goals" label="Goals" icon="🎯" />

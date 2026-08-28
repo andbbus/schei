@@ -168,7 +168,7 @@ Incremental bank imports (`importCsv.ts`, `importTradeRepublic.ts`) **apply paye
 
 ## Frontend data flow
 
-- Single budget assumed throughout (`getBudgetOrThrow()` → `findFirst`). Budget meta is fetched once in `App.tsx` and passed to routed views via React Router **Outlet context**. Views: `/` (Budget), `/accounts/:id` (register), `/reflect`, `/debts`, `/goals`, `/shopping`, `/subscriptions`, `/calendar`, `/assistant`.
+- Single budget assumed throughout (`getBudgetOrThrow()` → `findFirst`). Budget meta is fetched once in `App.tsx` and passed to routed views via React Router **Outlet context**. Views: `/` (Budget), `/accounts` (Accounts summary — pure presentation over `meta.accounts`, `AccountsView.tsx`), `/accounts/:id` (register), `/reflect`, `/debts`, `/goals`, `/shopping`, `/subscriptions`, `/calendar`, `/assistant`.
 - Server state via TanStack Query. Mutation refreshes invalidate `['month', m]` + `['budget']` (+ `['categories']`, `['txns', id]` where relevant) and — since logged ops exist — **`['ops']`** (three refresh sites: `BudgetView.refresh`, `Inspector.refresh`, `AccountView.invalidate`). Undo invalidates prefixes: `['ops']`, `['budget']`, `['month']`, `['categories']`, `['txns']`. Other keys: `['payee-rules']`, `['payees-manage']`, `['suggestions', accountId]`, `['debt-plans']`, `['goal-plans']`, `['drill', ...]`, `['rep', 'cashflow', n]`, `['calendar', m]`, `['rep', 'anomalies', days]`, `['rep', 'networth-forecast']`.
 - Vite proxies `/api` → `:3001` (`vite.config.ts`); the API client uses relative `/api`.
 - **Cmd+K palette** (`CommandPalette.tsx`, mounted in `App`): fuzzy-filtered navigation (views + accounts), all 4 themes, undo-last-change, send digest. `api.sendDigest` → `POST /digest/send`.

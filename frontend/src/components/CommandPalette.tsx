@@ -68,6 +68,7 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
     }
     const cmds: Cmd[] = [
       { id: 'nav-budget', label: 'Go to Budget', keywords: 'home', run: go('/') },
+      { id: 'nav-accounts', label: 'Go to Accounts', keywords: 'overview balances', run: go('/accounts') },
       { id: 'nav-reflect', label: 'Go to Reflect', keywords: 'reports charts', run: go('/reflect') },
       { id: 'nav-calendar', label: 'Go to Calendar', keywords: 'scheduled upcoming', run: go('/calendar') },
       { id: 'nav-subscriptions', label: 'Go to Subscriptions', keywords: 'recurring', run: go('/subscriptions') },
