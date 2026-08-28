@@ -175,15 +175,21 @@ function writeIco(buf256, file) {
 
 // ------------------------------------------------------------- per-platform
 
-// Icons are generated lazily (rendering 1024² takes ~1s; don't pay it on
-// every `npm start` that merely imports this module).
+// Icons live in assets/ (committed — the piggy-bank art, matching the
+// Budget.app launcher). The built-in painter is only a fallback for the
+// unlikely case a fresh checkout lost them: png/ico are regenerated then,
+// and macOS falls back to building the icns from the png via sips/iconutil.
 let assets = null
 function ensureAssets() {
   if (assets) return assets
   const dir = join(root, 'assets')
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'icon.png'), png(1024))
-  writeIco(png(256), join(dir, 'icon.ico'))
+  const pngFile = join(dir, 'icon.png')
+  const icoFile = join(dir, 'icon.ico')
+  if (!existsSync(pngFile) || !existsSync(icoFile)) {
+    mkdirSync(dir, { recursive: true })
+    if (!existsSync(pngFile)) writeFileSync(pngFile, png(1024))
+    if (!existsSync(icoFile)) writeIco(png(256), icoFile)
+  }
   assets = dir
   return dir
 }
@@ -220,31 +226,39 @@ function createMacApp(dest) {
   mkdirSync(join(contents, 'MacOS'), { recursive: true })
   mkdirSync(join(contents, 'Resources'), { recursive: true })
 
-  // icns via the stock tools; fall back to a plain PNG icon if unavailable.
+  // Preferred: the committed icns (same art as the Budget.app launcher).
+  // Fallback: build one from assets/icon.png with the stock sips + iconutil,
+  // and as a last resort ship the plain PNG.
   let iconFile = 'app.png'
-  const set = join(contents, 'icon.iconset')
-  mkdirSync(set, { recursive: true })
-  const entries = [
-    [16, 'icon_16x16.png'],
-    [32, 'icon_16x16@2x.png'],
-    [32, 'icon_32x32.png'],
-    [64, 'icon_32x32@2x.png'],
-    [128, 'icon_128x128.png'],
-    [256, 'icon_128x128@2x.png'],
-    [256, 'icon_256x256.png'],
-    [512, 'icon_256x256@2x.png'],
-    [512, 'icon_512x512.png'],
-    [1024, 'icon_512x512@2x.png'],
-  ]
-  let ok = true
-  for (const [n, name] of entries) {
-    const r = sh('sips', ['-s', 'format', 'png', '-z', String(n), String(n), join(assetsDir, 'icon.png'), '--out', join(set, name)])
-    if (r.status !== 0) ok = false
-  }
-  if (ok && sh('iconutil', ['-c', 'icns', set, '-o', join(contents, 'Resources', 'app.icns')]).status === 0) {
+  const icnsSrc = join(assetsDir, 'icon.icns')
+  if (existsSync(icnsSrc)) {
+    copyFileSync(icnsSrc, join(contents, 'Resources', 'app.icns'))
     iconFile = 'app.icns'
+  } else {
+    const set = join(contents, 'icon.iconset')
+    mkdirSync(set, { recursive: true })
+    const entries = [
+      [16, 'icon_16x16.png'],
+      [32, 'icon_16x16@2x.png'],
+      [32, 'icon_32x32.png'],
+      [64, 'icon_32x32@2x.png'],
+      [128, 'icon_128x128.png'],
+      [256, 'icon_128x128@2x.png'],
+      [256, 'icon_256x256.png'],
+      [512, 'icon_256x256@2x.png'],
+      [512, 'icon_512x512.png'],
+      [1024, 'icon_512x512@2x.png'],
+    ]
+    let ok = true
+    for (const [n, name] of entries) {
+      const r = sh('sips', ['-s', 'format', 'png', '-z', String(n), String(n), join(assetsDir, 'icon.png'), '--out', join(set, name)])
+      if (r.status !== 0) ok = false
+    }
+    if (ok && sh('iconutil', ['-c', 'icns', set, '-o', join(contents, 'Resources', 'app.icns')]).status === 0) {
+      iconFile = 'app.icns'
+    }
+    rmSync(set, { recursive: true, force: true })
   }
-  rmSync(set, { recursive: true, force: true })
 
   const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

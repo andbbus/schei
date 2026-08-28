@@ -34,8 +34,8 @@ npm start         # starts both servers and opens http://localhost:5173
 Stop with `Ctrl-C`.
 
 **Setup also adds a "YNAB Clone" icon to your Desktop** (a real `.app` on
-macOS, a shortcut on Windows/Linux, with its own icon — generated locally, no
-assets downloaded). Double-click it to start everything; drag it to your Dock
+macOS, a shortcut on Windows/Linux, with the app's piggy-bank icon from
+`assets/`). Double-click it to start everything; drag it to your Dock
 (macOS), taskbar (Windows) or app menu (Linux) to pin it. Missing or moved the
 repo? Recreate it anytime with `npm run icon`.
 
