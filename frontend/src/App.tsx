@@ -9,27 +9,34 @@ import HistoryMenu from './components/HistoryMenu'
 import CommandPalette from './components/CommandPalette'
 import TransactionModal from './components/TransactionModal'
 import ShortcutsModal from './components/ShortcutsModal'
+import EmailSettingsModal from './components/EmailSettingsModal'
 import Welcome from './components/Welcome'
 
 // Hosts for globally-dispatched actions (custom shortcuts, sidebar button,
-// palette): the centered Add-transaction dialog and the shortcut editor.
+// palette): the centered Add-transaction dialog, the shortcut editor and
+// the email/digest configuration.
 function GlobalHosts({ meta }: { meta: BudgetMeta }) {
   const [addTxn, setAddTxn] = useState(false)
   const [shortcuts, setShortcuts] = useState(false)
+  const [email, setEmail] = useState(false)
   useEffect(() => {
     const openAdd = () => setAddTxn(true)
     const openShortcuts = () => setShortcuts(true)
+    const openEmail = () => setEmail(true)
     window.addEventListener('schei:add-txn', openAdd)
     window.addEventListener('schei:shortcuts', openShortcuts)
+    window.addEventListener('schei:email', openEmail)
     return () => {
       window.removeEventListener('schei:add-txn', openAdd)
       window.removeEventListener('schei:shortcuts', openShortcuts)
+      window.removeEventListener('schei:email', openEmail)
     }
   }, [])
   return (
     <>
       {addTxn && <TransactionModal meta={meta} onClose={() => setAddTxn(false)} />}
       {shortcuts && <ShortcutsModal onClose={() => setShortcuts(false)} />}
+      {email && <EmailSettingsModal onClose={() => setEmail(false)} />}
     </>
   )
 }

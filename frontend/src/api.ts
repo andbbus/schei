@@ -65,6 +65,15 @@ export interface BudgetMeta {
   accounts: AccountLite[]
 }
 
+export interface EmailSettings {
+  provider: 'agentmail' | 'smtp' | null
+  digestEnabled: boolean
+  recipient: string | null
+  inbox: string | null
+  agentKeyTail: string | null
+  smtp: { host: string; port: number; secure: boolean; user: string; from: string; passTail: string | null } | null
+}
+
 export interface RulePayload {
   pattern: string
   field?: string
@@ -440,6 +449,9 @@ export const api = {
 
   chatStatus: () => get<{ configured: boolean; defaultModel: string }>('/chat/status'),
   sendDigest: () => send<{ subject: string; channel: string; to: string }>('POST', '/digest/send'),
+  emailSettings: () => get<EmailSettings>('/settings/email'),
+  saveEmailSettings: (b: Record<string, unknown>) => send<EmailSettings>('POST', '/settings/email', b),
+  testEmail: () => send<{ channel: string; to: string }>('POST', '/settings/email/test', {}),
   chatSessions: () =>
     get<{ id: string; title: string; model: string; createdAt: string; lastMessage: string | null }[]>('/chat/sessions'),
   createChatSession: (b?: { title?: string; model?: string }) =>

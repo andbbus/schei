@@ -14,7 +14,13 @@ export default async function digestRoutes(app: FastifyInstance) {
     return { data, ...digest, recipient: digestRecipient() };
   });
 
-  app.post('/digest/send', async () => {
-    return sendDigestNow();
+  app.post('/digest/send', async (_req, reply) => {
+    try {
+      return await sendDigestNow();
+    } catch (e) {
+      // config errors (no recipient/provider) and delivery failures surface
+      // in the app's { error } shape so the UI can show + act on them
+      return reply.code(502).send({ error: e instanceof Error ? e.message : String(e) });
+    }
   });
 }

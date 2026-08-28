@@ -238,7 +238,7 @@ export function digestRecipient(): string | null {
 
 export async function sendDigestEmail(subject: string, text: string, html: string): Promise<{ channel: string; to: string }> {
   const recipient = digestRecipient();
-  if (!recipient) throw new Error('No digest recipient — set DIGEST_TO (or SHOPPING_EMAIL_TO) in backend/.env.');
+  if (!recipient) throw new Error('No digest recipient — open Settings (⚙ → Email & digest) to set one, or add DIGEST_TO to backend/.env.');
   const key = agentMailApiKey();
   if (key) {
     const inbox = process.env.AGENTMAIL_INBOX?.trim();
@@ -277,9 +277,10 @@ export async function sendDigestNow(): Promise<{ subject: string; channel: strin
 }
 
 // ---- weekly scheduler (no cron dep): DIGEST_ENABLED=1 → Mondays 08:00 ----
+// The flag is re-read on every tick so toggling it in Settings applies
+// without a restart.
 
 export function startDigestScheduler(): void {
-  if (process.env.DIGEST_ENABLED !== '1') return;
   const schedule = () => {
     const now = new Date();
     const next = new Date(now);
@@ -290,7 +291,9 @@ export function startDigestScheduler(): void {
     console.log(`[digest] next weekly digest: ${next.toString()}`);
     setTimeout(async () => {
       try {
-        if (digestRecipient()) {
+        if (process.env.DIGEST_ENABLED !== '1') {
+          console.log('[digest] skipped — disabled (DIGEST_ENABLED)');
+        } else if (digestRecipient()) {
           const r = await sendDigestNow();
           console.log(`[digest] sent via ${r.channel} to ${r.to}`);
         } else {

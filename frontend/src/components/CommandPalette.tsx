@@ -93,6 +93,7 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
       { id: 'nav-shopping', label: 'Go to Shopping', keywords: 'groceries lists', run: go('/shopping') },
       { id: 'nav-assistant', label: 'Go to Assistant', keywords: 'ai chat', run: go('/assistant') },
       { id: 'customize-shortcuts', label: 'Customize shortcuts', hint: bindingHint('shortcuts'), keywords: 'keyboard keys bindings hotkeys settings', run: dispatch('schei:shortcuts') },
+      { id: 'email-settings', label: 'Configure email & digest', keywords: 'mail smtp agentmail newsletter weekly report settings', run: dispatch('schei:email') },
     ]
     for (const a of meta.accounts) {
       cmds.push({ id: `acct-${a.id}`, label: `Go to ${a.name}`, hint: a.onBudget ? 'account' : 'tracking', run: go(`/accounts/${a.id}`) })
@@ -130,6 +131,11 @@ export default function CommandPalette({ meta }: { meta: BudgetMeta }) {
           alert(`Digest sent via ${r.channel} to ${r.to}`)
         } catch (e) {
           setError(errMsg(e as Error))
+          // missing recipient/provider → jump straight to the settings dialog
+          const msg = errMsg(e as Error)
+          if (/No digest recipient|No email provider configured|No recipient/.test(msg)) {
+            window.dispatchEvent(new CustomEvent('schei:email'))
+          }
         }
       },
     })

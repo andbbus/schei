@@ -4,6 +4,7 @@ import type { BudgetMeta, AccountLite } from '../api'
 import { fmt, type Currency } from '../format'
 import OptionsModal from './OptionsModal'
 import AccountModal from './AccountModal'
+import EmailSettingsModal from './EmailSettingsModal'
 
 function NavItem({ to, label, icon, end }: { to: string; label: string; icon: string; end?: boolean }) {
   return (
@@ -40,6 +41,7 @@ function AccountItem({ a, c }: { a: AccountLite; c: Currency }) {
 
 export default function Sidebar({ meta }: { meta: BudgetMeta }) {
   const [showOptions, setShowOptions] = useState(false)
+  const [showEmail, setShowEmail] = useState(false)
   const [adding, setAdding] = useState(false)
   const c: Currency = {
     symbol: meta.budget.currencySymbol,
@@ -137,7 +139,8 @@ export default function Sidebar({ meta }: { meta: BudgetMeta }) {
           </button>
         </div>
       </div>
-      {showOptions && <OptionsModal onClose={() => setShowOptions(false)} />}
+      {showOptions && <OptionsModal onClose={() => setShowOptions(false)} onOpenEmail={() => { setShowOptions(false); setShowEmail(true) }} />}
+      {showEmail && <EmailSettingsModal onClose={() => setShowEmail(false)} />}
       {adding && <AccountModal onClose={() => setAdding(false)} />}
     </aside>
   )

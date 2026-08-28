@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { THEMES, getTheme, setTheme, type ThemeId } from '../lib/theme'
 
-export default function OptionsModal({ onClose }: { onClose: () => void }) {
+export default function OptionsModal({ onClose, onOpenEmail }: { onClose: () => void; onOpenEmail?: () => void }) {
   const [current, setCurrent] = useState<ThemeId>(() => getTheme())
 
   const pick = (id: ThemeId) => {
@@ -52,6 +52,21 @@ export default function OptionsModal({ onClose }: { onClose: () => void }) {
             )
           })}
         </div>
+        {onOpenEmail && (
+          <>
+            <div className="mb-2 mt-4 text-xs font-semibold tracking-[0.06em] text-slate-500 uppercase">Email &amp; digest</div>
+            <button
+              onClick={onOpenEmail}
+              className="flex w-full items-center justify-between rounded-md border border-slate-200 p-2.5 text-left transition-colors hover:bg-slate-100"
+            >
+              <span>
+                <span className="block text-[13px] font-medium text-slate-700">Configure delivery</span>
+                <span className="block text-[11px] text-slate-500">AgentMail or SMTP · shopping lists · weekly digest</span>
+              </span>
+              <span className="text-slate-400">→</span>
+            </button>
+          </>
+        )}
         <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
           The theme applies instantly and is remembered for this browser (localStorage). Printing always uses a light ink
           layout regardless of the active theme.

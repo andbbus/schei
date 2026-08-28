@@ -115,6 +115,17 @@ If you change engine math, re-run both.
   do NOT flip the setup cache mid-wizard, it unmounts the flow), provider form shared as
   `AssistantConfigForm.tsx` (also the ⚙ modal in AssistantView). Scratch-port E2E:
   `frontend/scripts/welcome-wizard-check.mjs` (VITE_API_TARGET/VITE_PORT proxy override).
+- **`routes/settings.ts`** — email/digest configuration UI backing (`⚙ → Email & digest`, also
+  palette command + digest-error auto-open): `GET /settings/email` (provider detect
+  agentmail/smtp/none, recipient, tails only — never raw keys), `POST /settings/email` (writes
+  AGENTMAIL_*/SMTP_*/DIGEST_TO/SHOPPING_EMAIL_TO/DIGEST_ENABLED via `upsertEnv` + live
+  `process.env`, blank secret = keep, explicit null = clear, switching provider neutralizes the
+  other's keys), `POST /settings/email/test` (sends via `sendDigestEmail`). The digest scheduler
+  re-reads `DIGEST_ENABLED`/recipient **per tick**, so toggles apply without restart. Blank secrets
+  are never sent from the frontend (`undefined`); `POST /digest/send` wraps failures in 502
+  `{ error }` and the palette dispatches `schei:email` on config errors. Frontend:
+  `EmailSettingsModal.tsx` (opened from OptionsModal via `onOpenEmail` swap, palette, or the
+  digest-error path), `['email-settings']` query updated via `setQueryData` after save.
 - **`routes/debts.ts`** — DebtPlan CRUD + `POST /debt-plans/:id/payment-schedule` (memo marker `Piano ammortamento: <planId>` for idempotency / `hasPaymentSchedule`; `frequency: monthly|once`). Schedule inputs are stored, amortization is derived client-side (`frontend/src/payoff.ts`).
 - **`routes/goals.ts`** — GoalPlan CRUD (mirror of DebtPlan: target/current,
   optional account + category link) + `POST /goal-plans/:id/contribution-schedule`

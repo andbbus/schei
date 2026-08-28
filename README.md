@@ -91,6 +91,33 @@ Model and key land in `backend/.env` (`CHAT_BASE_URL`, `CHAT_MODEL`,
 `CHAT_API_KEY`) — the same place the rest of the optional config lives (see
 [`backend/.env.example`](backend/.env.example)).
 
+## Email & weekly digest
+
+Configure it from the app: **⚙ (bottom of the sidebar) → Email & digest**,
+or via the Cmd+K palette → *Configure email & digest*. Two delivery
+channels, whichever is easier for you:
+
+- **AgentMail** — a hosted inbox: paste an [AgentMail](https://agentmail.to)
+  API key + your inbox name.
+- **SMTP** — any mail server: host, port, username + **app password**
+  (Gmail, Outlook, Fastmail, … all work), optional custom *From*.
+
+Hit **Save** (applies immediately, no restart) and **Send test email** to
+verify. Everything email-driven uses this channel:
+
+- **Weekly digest** — toggle it on and an email arrives every **Monday
+  08:00**: Ready to Assign, overspent categories, underfunded targets, the
+  next 7 days of scheduled bills, unusual charges, a 3-month spending trend
+  and net worth.
+- **Shopping lists** — the ✉ button on a list emails it (grouped by store,
+  with price totals).
+
+The recipient and keys are stored locally in `backend/.env` and never leave
+your machine except to your chosen provider. Prefer hand-editing? The same
+settings exist as env vars (`DIGEST_TO`, `DIGEST_ENABLED`, `AGENTMAIL_*`,
+`SMTP_*` — see [`backend/.env.example`](backend/.env.example); restart the
+backend after editing the file).
+
 ## Optional automations
 
 All configured in `backend/.env` (restart the backend after editing):
@@ -99,11 +126,9 @@ All configured in `backend/.env` (restart the backend after editing):
   in the folder and it's sniffed, deduped and imported automatically. The
   filename must start with the account name (e.g. `Account_2026-08.csv`).
   Processed files move to `imported/`, dubious ones to `review/`.
-- **Weekly digest** — `DIGEST_ENABLED=1` + `DIGEST_TO=you@example.com`: an
-  email every Monday 08:00 with Ready to Assign, overspent/underfunded
-  categories, the next 7 days of bills, unusual charges and a 3-month trend.
-- **Shopping email / digest delivery** — AgentMail (`AGENTMAIL_API_KEY`) or
-  plain SMTP (`SMTP_HOST`, …).
+- **Email & digest** — configurable in the app (see
+  [above](#email--weekly-digest)); `DIGEST_ENABLED=1` +
+  `DIGEST_TO=you@example.com` if you'd rather edit `.env` directly.
 
 ## Importing
 

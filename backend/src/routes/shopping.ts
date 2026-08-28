@@ -229,7 +229,7 @@ export default async function shoppingRoutes(app: FastifyInstance) {
     });
     if (!list) return reply.code(404).send({ error: 'List not found.' });
     const recipient = to?.trim() || process.env.SHOPPING_EMAIL_TO;
-    if (!recipient) return reply.code(409).send({ error: 'No recipient — set SHOPPING_EMAIL_TO in backend/.env or pass to.' });
+    if (!recipient) return reply.code(409).send({ error: 'No recipient — open Settings (⚙ → Email & digest) to set one, or add SHOPPING_EMAIL_TO to backend/.env.' });
 
     const total = list.items.reduce((s, i) => s + i.price * i.quantity, 0);
     const dateLabel = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });

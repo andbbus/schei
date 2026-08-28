@@ -13,6 +13,7 @@ import importRoutes from './routes/imports';
 import chatRoutes from './routes/chat';
 import digestRoutes from './routes/digest';
 import setupRoutes from './routes/setup';
+import settingsRoutes from './routes/settings';
 import { startWatcher } from './watcher';
 import { startDigestScheduler } from './digest';
 
@@ -33,6 +34,7 @@ await app.register(importRoutes, { prefix: '/api' });
 await app.register(chatRoutes, { prefix: '/api' });
 await app.register(digestRoutes, { prefix: '/api' });
 await app.register(setupRoutes, { prefix: '/api' });
+await app.register(settingsRoutes, { prefix: '/api' });
 
 const port = Number(process.env.PORT ?? 3001);
 app
