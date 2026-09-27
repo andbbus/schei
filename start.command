@@ -31,6 +31,22 @@ fi
 
 PIDS=()
 
+# Wait up to 60 s for a server to answer; give up early if its process died.
+# On failure keep the window open so the error above stays readable.
+wait_for() {  # url label pid
+  printf "  waiting for %s" "$2"
+  for _ in $(seq 120); do
+    curl -s "$1" >/dev/null 2>&1 && { echo " ready"; return 0; }
+    kill -0 "$3" 2>/dev/null || break
+    printf "."; sleep 0.5
+  done
+  echo
+  echo "✗  The $2 did not start — see the errors above."
+  kill "${PIDS[@]}" 2>/dev/null
+  read -r -p "Press Enter to close…" _
+  exit 1
+}
+
 # --- backend (:3001) ---
 if curl -s http://localhost:3001/api/health >/dev/null 2>&1; then
   echo "Backend already running on :3001"
@@ -38,9 +54,7 @@ else
   echo "Starting backend  (:3001)…"
   ( cd backend && npm run dev ) &
   PIDS+=($!)
-  printf "  waiting for backend"
-  until curl -s http://localhost:3001/api/health >/dev/null 2>&1; do printf "."; sleep 0.5; done
-  echo " ready"
+  wait_for http://localhost:3001/api/health backend $!
 fi
 
 # --- frontend (:5173) ---
@@ -50,9 +64,7 @@ else
   echo "Starting frontend (:5173)…"
   ( cd frontend && npm run dev ) &
   PIDS+=($!)
-  printf "  waiting for frontend"
-  until curl -s http://localhost:5173 >/dev/null 2>&1; do printf "."; sleep 0.5; done
-  echo " ready"
+  wait_for http://localhost:5173 frontend $!
 fi
 
 echo

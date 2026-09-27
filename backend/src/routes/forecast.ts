@@ -75,11 +75,11 @@ export default function forecastRoutes(app: FastifyInstance) {
   // Upsert a per-month projected-expense override for a category.
   app.put('/forecast/overrides/:categoryId', async (req, reply) => {
     const { categoryId } = req.params as { categoryId: string };
-    const body = req.body as { month?: string; amount?: number };
-    if (!body.month || !MONTH_RE.test(body.month)) {
+    const { month, amount } = req.body as { month?: string; amount?: number };
+    if (!month || !MONTH_RE.test(month)) {
       return reply.code(400).send({ error: 'month must be in YYYY-MM-01 format.' });
     }
-    if (!Number.isInteger(body.amount)) {
+    if (typeof amount !== 'number' || !Number.isInteger(amount)) {
       return reply.code(400).send({ error: 'amount must be an integer (milliunits).' });
     }
     const budget = await getBudgetOrThrow();
@@ -88,18 +88,18 @@ export default function forecastRoutes(app: FastifyInstance) {
 
     await prisma.$transaction(async (tx) => {
       const existing = await tx.projectedOverride.findUnique({
-        where: { budgetId_categoryId_month: { budgetId: budget.id, categoryId, month: body.month } },
+        where: { budgetId_categoryId_month: { budgetId: budget.id, categoryId, month } },
       });
       await tx.projectedOverride.upsert({
-        where: { budgetId_categoryId_month: { budgetId: budget.id, categoryId, month: body.month } },
-        create: { budgetId: budget.id, categoryId, month: body.month, amount: body.amount },
-        update: { amount: body.amount },
+        where: { budgetId_categoryId_month: { budgetId: budget.id, categoryId, month } },
+        create: { budgetId: budget.id, categoryId, month, amount },
+        update: { amount },
       });
       await logOps(tx, budget.id, 'projectedOverride', {
         categoryId,
-        month: body.month,
+        month,
         prev: existing?.amount ?? null,
-        next: body.amount,
+        next: amount,
       });
     });
     return { ok: true };
@@ -108,22 +108,22 @@ export default function forecastRoutes(app: FastifyInstance) {
   // Remove a per-month override, reverting the category to its moving average.
   app.delete('/forecast/overrides/:categoryId', async (req, reply) => {
     const { categoryId } = req.params as { categoryId: string };
-    const q = req.query as { month?: string };
-    if (!q.month || !MONTH_RE.test(q.month)) {
+    const { month } = req.query as { month?: string };
+    if (!month || !MONTH_RE.test(month)) {
       return reply.code(400).send({ error: 'month must be in YYYY-MM-01 format.' });
     }
     const budget = await getBudgetOrThrow();
     await prisma.$transaction(async (tx) => {
       const existing = await tx.projectedOverride.findUnique({
-        where: { budgetId_categoryId_month: { budgetId: budget.id, categoryId, month: q.month } },
+        where: { budgetId_categoryId_month: { budgetId: budget.id, categoryId, month } },
       });
       await tx.projectedOverride.deleteMany({
-        where: { budgetId: budget.id, categoryId, month: q.month },
+        where: { budgetId: budget.id, categoryId, month },
       });
       if (existing) {
         await logOps(tx, budget.id, 'projectedOverride', {
           categoryId,
-          month: q.month,
+          month,
           prev: existing.amount,
           next: null,
         });

@@ -104,7 +104,7 @@ export async function test() {
   // 3. payee similarity: Lidl variants pair up, transfers excluded
   const sim = (await app.inject({ method: 'GET', url: '/api/payees/similar' })).json();
   assert.ok(sim.some((p: { fromName: string; toName: string }) => p.fromName === 'Lidl' && p.toName === 'LIDL SAGT DANKE' || p.fromName === 'LIDL SAGT DANKE' && p.toName === 'Lidl'), 'Lidl/LIDL SAGT DANKE pair expected');
-  assert.ok(!sim.some((p: { fromName: string }) => p.fromName.startsWith('Transfer') || p.toName.startsWith('Transfer')), 'transfer payees excluded');
+  assert.ok(!sim.some((p: { fromName: string; toName: string }) => p.fromName.startsWith('Transfer') || p.toName.startsWith('Transfer')), 'transfer payees excluded');
 
   // 4. schedule skip advances nextDate without creating a txn
   const sched = await prisma.scheduledTransaction.create({

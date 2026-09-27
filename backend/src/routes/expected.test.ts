@@ -102,7 +102,7 @@ export async function test() {
   assert.equal(grant.category, 'Ready to Assign');
 
   // 2. recurring monthly outflow appears in at least two months
-  const monthlyRows = data.months.filter((r: { items: { payee: string }[] }) =>
+  const monthlyRows = data.months.filter((r: { items: { payee: string; amount: number }[] }) =>
     r.items.some((i) => i.payee === 'Internal Xfer' && i.amount === -100000),
   );
   assert.ok(monthlyRows.length >= 2, `monthly schedule should recur (got ${monthlyRows.length})`);
