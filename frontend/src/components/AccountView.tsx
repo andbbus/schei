@@ -8,14 +8,14 @@ import { EMPTY_FILTERS, activeCount, applyFilters, filtersFromQuery, filtersToQu
 import { csvAmount, downloadFile, toCsv } from '../csv'
 import { nextDates } from '../lib/dates'
 import { prefillFromRules, type RuleLite } from '../lib/rules'
+import { TRANSFER_PREFIX } from '../lib/payeePicker'
 import RulesManager from './RulesManager'
 import SuggestionsModal from './SuggestionsModal'
 import PayeesManager from './PayeesManager'
 import ImportCsvModal from './ImportCsvModal'
 import DuplicatesModal from './DuplicatesModal'
 import TransactionModal from './TransactionModal'
-
-const TRANSFER_PREFIX = 'Transfer : '
+import PayeeInput from './PayeeInput'
 
 export default function AccountView() {
   const { id = '' } = useParams()
@@ -815,7 +815,7 @@ function Row({
           {t.cleared === 'uncleared' ? '' : t.cleared === 'reconciled' ? '✓' : 'C'}
         </span>
       </div>
-      <div className={`tnum text-right ${t.runningBalance < 0 ? 'font-medium text-red-600' : 'text-slate-600'}`}>{fmt(t.runningBalance, c)}</div>
+      <div className={`tnum text-right ${t.runningBalance < 0 ? 'font-medium text-red-600' : 'text-slate-600'}`}>{t.scheduledId ? '' : fmt(t.runningBalance, c)}</div>
     </div>
   )
 }
@@ -855,6 +855,7 @@ function TxnEditor({
   const listId = useId()
   const [date, setDate] = useState(initial?.date ?? todayISO())
   const [payee, setPayee] = useState(initial?.payee ?? '')
+  const [transferAccountId, setTransferAccountId] = useState<string | null>(initial?.transferAccountId ?? null)
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '')
   const [memo, setMemo] = useState(initial?.memo ?? '')
   const [flag, setFlag] = useState(initial?.flagColor ?? '')
@@ -881,7 +882,7 @@ function TxnEditor({
   // server re-applies authoritatively on save when no category is sent.
   const applyRule = () => {
     const name = payee.trim()
-    if (categoryId || !name || isExistingTransfer || transferTarget || name.startsWith(TRANSFER_PREFIX)) return
+    if (categoryId || !name || transferTarget || name.startsWith(TRANSFER_PREFIX)) return
     const { patch, sourcePattern } = prefillFromRules({ payeeName: name, memo: null, categoryId: null }, rules ?? [])
     if (patch.categoryId && sourcePattern) {
       setCategoryId(patch.categoryId)
@@ -889,14 +890,14 @@ function TxnEditor({
     }
   }
 
-  // PATCH can't convert a normal txn ↔ transfer, so an existing transfer's
-  // payee is read-only. ponytail: convert = delete + recreate; add if it hurts.
-  const isExistingTransfer = !!initial?.transferAccountId
-  const transferTarget = accounts.find((a) => a.name === payee.slice(TRANSFER_PREFIX.length) && payee.startsWith(TRANSFER_PREFIX))
+  // Picking another account (or an existing transfer's counterparty) makes the
+  // row a transfer; the save below sends `transferAccountId` and the backend
+  // creates/removes the mirrored leg so conversion both ways is undoable.
+  const transferTarget = transferAccountId ? accounts.find((a) => a.id === transferAccountId) ?? null : null
   // Repeat only for new txns or existing schedules — a real txn can't convert.
   const canRepeat = !initial || !!initial.scheduledId
   // Splits only on plain transactions (not transfers, not schedules).
-  const canSplit = !isExistingTransfer && !initial?.scheduledId
+  const canSplit = !transferTarget && !initial?.scheduledId
 
   const subAmount = (i: number) => parseAmount(subs[i]?.amount ?? '')
   const splitTotal = subs.reduce((s, _, i) => s + subAmount(i), 0)
@@ -931,17 +932,17 @@ function TxnEditor({
       })
       return
     }
-    if (isExistingTransfer) {
-      onSave({ ...base, amount: parseAmount(inflow) - parseAmount(outflow) }) // payee/category locked on a transfer leg
-    } else if (transferTarget) {
+    if (transferTarget) {
       // category only budgets when the money leaves the budget (tracking target)
       onSave({ ...base, transferAccountId: transferTarget.id, categoryId: transferTarget.onBudget ? null : categoryId || null, amount: parseAmount(inflow) - parseAmount(outflow) })
     } else {
-      onSave({ ...base, payeeName: payee, categoryId: categoryId || null, amount: parseAmount(inflow) - parseAmount(outflow) })
+      // converting an existing transfer back to a plain row → explicit null
+      const untie = initial?.transferAccountId ? { transferAccountId: null } : {}
+      onSave({ ...base, ...untie, payeeName: payee, categoryId: categoryId || null, amount: parseAmount(inflow) - parseAmount(outflow) })
     }
   }
 
-  const categoryLocked = isExistingTransfer || (transferTarget?.onBudget ?? false)
+  const categoryLocked = transferTarget?.onBudget ?? false
   const schedulePreview = initial?.scheduledId
     ? nextDates(initial.frequency ?? 'monthly', initial.date, 4, initial.anchorDay ?? undefined)
     : []
@@ -999,30 +1000,20 @@ function TxnEditor({
             </div>
           )}
         </div>
-        <input
-          placeholder="Payee"
-          list={listId}
+        <PayeeInput
           value={payee}
-          onChange={(e) => setPayee(e.target.value)}
-          onBlur={applyRule}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              applyRule()
-              ;(e.currentTarget as HTMLInputElement).blur()
-            }
+          transferAccountId={transferAccountId}
+          onChange={(sel) => {
+            setPayee(sel.payee)
+            setTransferAccountId(sel.transferAccountId)
           }}
-          disabled={isExistingTransfer}
-          className="mr-1 rounded border border-slate-300 px-1 py-0.5 disabled:bg-slate-100 disabled:text-slate-400"
+          payees={payees}
+          accounts={split ? [] : accounts}
+          onBlur={applyRule}
+          onEnter={applyRule}
+          placeholder="Payee"
+          inputClassName="mr-1 w-full rounded border border-slate-300 px-1 py-0.5"
         />
-        <datalist id={listId}>
-          {payees.map((p) => (
-            <option key={p.id} value={p.name} />
-          ))}
-          {accounts.map((a) => (
-            <option key={a.id} value={TRANSFER_PREFIX + a.name} />
-          ))}
-        </datalist>
         <div className="mr-1 flex flex-col">
           <select
             value={split ? '' : categoryId}

@@ -4,6 +4,7 @@ import type { BudgetMeta } from '../api'
 import { api, errMsg } from '../api'
 import { normalizeAmount, parseAmount, todayISO, type Currency } from '../format'
 import Modal, { fieldInput, fieldLabel, ghostBtn, primaryBtn } from './Modal'
+import PayeeInput from './PayeeInput'
 
 // Centered "Add transaction" dialog. Global (sidebar / shortcut — with an
 // account picker) or scoped to one account when `accountId` is set.
@@ -23,6 +24,7 @@ export default function TransactionModal({
   const [acctId, setAcctId] = useState(accountId ?? openAccounts[0]?.id ?? '')
   const [date, setDate] = useState(todayISO())
   const [payee, setPayee] = useState('')
+  const [transferAccountId, setTransferAccountId] = useState<string | null>(null)
   const [outflow, setOutflow] = useState('')
   const [inflow, setInflow] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -37,7 +39,9 @@ export default function TransactionModal({
     digits: meta.budget.decimalDigits,
     locale: meta.budget.locale,
   }
-  const payeeListId = 'txn-modal-payees'
+  // A chosen counterparty account turns the entry into a mirrored transfer.
+  const transferTarget = transferAccountId ? meta.accounts.find((a) => a.id === transferAccountId) ?? null : null
+  const categoryLocked = transferTarget?.onBudget ?? false
 
   const create = useMutation({
     // a "repeat" choice turns the entry into a scheduled transaction instead
@@ -66,11 +70,12 @@ export default function TransactionModal({
       accountId: acctId,
       date,
       payeeName: payee.trim() || undefined,
-      categoryId: categoryId || null,
+      categoryId: categoryLocked ? null : categoryId || null,
       memo: memo.trim() || null,
       amount,
       cleared: 'uncleared',
     }
+    if (transferTarget) payload.transferAccountId = transferTarget.id
     if (repeat) {
       payload.frequency = repeat
       payload.nextDate = date
@@ -84,7 +89,19 @@ export default function TransactionModal({
         <div className="grid grid-cols-2 gap-3">
           <label className={`block ${accountId ? 'hidden' : ''}`}>
             <span className={fieldLabel}>Account</span>
-            <select value={acctId} onChange={(e) => setAcctId(e.target.value)} className={fieldInput}>
+            <select
+              value={acctId}
+              onChange={(e) => {
+                const next = e.target.value
+                setAcctId(next)
+                // A transfer can't point at the account we're editing — drop it.
+                if (transferAccountId === next) {
+                  setTransferAccountId(null)
+                  setPayee('')
+                }
+              }}
+              className={fieldInput}
+            >
               {openAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -120,23 +137,34 @@ export default function TransactionModal({
         </div>
         <label className="block">
           <span className={fieldLabel}>Payee</span>
-          <input
+          <PayeeInput
             autoFocus
             value={payee}
-            onChange={(e) => setPayee(e.target.value)}
-            list={payeeListId}
-            placeholder="Someone…"
-            className={fieldInput}
+            transferAccountId={transferAccountId}
+            onChange={(sel) => {
+              setPayee(sel.payee)
+              setTransferAccountId(sel.transferAccountId)
+            }}
+            payees={payees ?? []}
+            accounts={openAccounts}
+            excludeAccountId={acctId}
+            placeholder="Someone or an account…"
+            inputClassName={fieldInput}
           />
-          <datalist id={payeeListId}>
-            {payees?.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
-          </datalist>
+          {transferTarget && (
+            <span className="mt-1 block text-[11px] text-slate-500">
+              Transfer to <b>{transferTarget.name}</b> — the matching {transferTarget.onBudget ? '' : 'outflow '}entry is added there automatically.
+            </span>
+          )}
         </label>
         <label className="block">
           <span className={fieldLabel}>Category</span>
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={fieldInput}>
+          <select
+            value={categoryLocked ? '' : categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            disabled={categoryLocked}
+            className={`${fieldInput} disabled:bg-slate-100 disabled:text-slate-400`}
+          >
             <option value="">— none —</option>
             {meta.budget.inflowCategoryId && <option value={meta.budget.inflowCategoryId}>Inflow: Ready to Assign</option>}
             {groups?.map((g) =>

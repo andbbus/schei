@@ -1,14 +1,14 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AccountLite, GroupView } from '../api'
 import { prefillFromRules, type RuleLite } from '../lib/rules'
+import { TRANSFER_PREFIX, matchTransferName } from '../lib/payeePicker'
 import { parseAmount, type Currency } from '../format'
+import PayeeInput from './PayeeInput'
 
 // Compact transaction editor for the calendar day rail. Covers the common
 // case (plain in/out transaction on one account, transfers via the
-// "Transfer : Account" payee convention). Splits and existing transfers are
-// edited in the register — the calendar routes there instead.
-
-const TRANSFER_PREFIX = 'Transfer : '
+// payee/account picker). Splits and existing transfers are edited in the
+// register — the calendar routes there instead.
 
 export interface EditorTarget {
   mode: 'create' | 'edit'
@@ -41,10 +41,12 @@ export default function CalendarTxnEditor({
   onSaved: (msg: string) => void
 }) {
   const editing = target.mode === 'edit'
-  const listId = useId()
   const [date, setDate] = useState(target.date)
   const [accountId, setAccountId] = useState(target.accountId ?? accounts[0]?.id ?? '')
-  const [payee, setPayee] = useState(target.payee?.startsWith(TRANSFER_PREFIX) ? target.payee : target.payee ?? '')
+  const [payee, setPayee] = useState(target.payee ?? '')
+  const [transferAccountId, setTransferAccountId] = useState<string | null>(
+    target.payee ? (matchTransferName(target.payee, accounts)?.id ?? null) : null,
+  )
   const [categoryId, setCategoryId] = useState(target.categoryId ?? '')
   const [memo, setMemo] = useState(target.memo ?? '')
   const [outflow, setOutflow] = useState(target.amount && target.amount < 0 ? (-target.amount / 1000).toString() : '')
@@ -53,9 +55,7 @@ export default function CalendarTxnEditor({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const transferTarget = accounts.find(
-    (a) => payee.startsWith(TRANSFER_PREFIX) && a.name === payee.slice(TRANSFER_PREFIX.length),
-  )
+  const transferTarget = transferAccountId ? accounts.find((a) => a.id === transferAccountId) ?? null : null
   const catName = (id: string) => groups.flatMap((g) => g.categories).find((x) => x.id === id)?.name ?? ''
 
   // Rule prefill on payee blur — mirrors the backend pipeline (lib/rules.ts);
@@ -102,6 +102,7 @@ export default function CalendarTxnEditor({
       }
       base.payeeName = payee.trim()
       base.categoryId = categoryId || null
+      if (editing) base.transferAccountId = null // detach if this was a transfer leg
     }
     setSaving(true)
     try {
@@ -146,7 +147,14 @@ export default function CalendarTxnEditor({
             Account
             <select
               value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value
+                setAccountId(next)
+                if (transferAccountId === next) {
+                  setTransferAccountId(null)
+                  setPayee('')
+                }
+              }}
               disabled={editing}
               className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-[13px] text-slate-800 disabled:bg-slate-100 disabled:text-slate-400"
             >
@@ -161,22 +169,20 @@ export default function CalendarTxnEditor({
 
         <label className="mt-2 block text-[11px] font-medium text-slate-500">
           Payee
-          <input
-            list={listId}
+          <PayeeInput
             value={payee}
-            onChange={(e) => setPayee(e.target.value)}
+            transferAccountId={transferAccountId}
+            onChange={(sel) => {
+              setPayee(sel.payee)
+              setTransferAccountId(sel.transferAccountId)
+            }}
+            payees={payees}
+            accounts={accounts}
+            excludeAccountId={accountId}
             onBlur={applyRule}
-            placeholder="Payee or Transfer : Account"
-            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-[13px] text-slate-800"
+            placeholder="Payee or account…"
+            inputClassName="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-[13px] text-slate-800"
           />
-          <datalist id={listId}>
-            {payees.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
-            {accounts.map((a) => (
-              <option key={a.id} value={TRANSFER_PREFIX + a.name} />
-            ))}
-          </datalist>
         </label>
         {hint && <div className="mt-0.5 text-[10px] text-emerald-600">rule: {hint}</div>}
 

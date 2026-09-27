@@ -100,12 +100,13 @@ export async function undoOp(tx: DbTx, budgetId: string, kind: string, raw: unkn
         raw,
         isRecord(raw) && typeof raw.txnId === 'string' && isRecord(raw.prev),
       );
-      const { txnId, transferTxnId, prev, prevMirror, prevSubs } = p as {
+      const { txnId, transferTxnId, prev, prevMirror, prevSubs, conversion } = p as {
         txnId: string;
         transferTxnId?: string | null;
         prev: Record<string, unknown>;
         prevMirror?: Record<string, unknown> | null;
         prevSubs?: { id: string; amount: number; categoryId: string | null; payeeId: string | null; memo: string | null; transferAccountId: string | null }[] | null;
+        conversion?: { createdMirrorId?: string; deletedMirrorId?: string } | null;
       };
       const live = await tx.transaction.findFirst({ where: { id: txnId, deleted: false }, select: { id: true } });
       if (live) {
@@ -121,6 +122,19 @@ export async function undoOp(tx: DbTx, budgetId: string, kind: string, raw: unkn
               data: { date: prevMirror.date ?? '', amount: prevMirror.amount ?? 0 },
             });
           }
+        }
+        // Undo a plain↔transfer conversion: the mirror this edit created goes
+        // away, the one it detached comes back (restoring `prev` above has
+        // already put the linkage back).
+        if (conversion?.createdMirrorId) {
+          await tx.transaction
+            .update({ where: { id: conversion.createdMirrorId }, data: { deleted: true } })
+            .catch(() => undefined);
+        }
+        if (conversion?.deletedMirrorId) {
+          await tx.transaction
+            .update({ where: { id: conversion.deletedMirrorId }, data: { deleted: false } })
+            .catch(() => undefined);
         }
         if (prevSubs) {
           await tx.subtransaction.deleteMany({ where: { transactionId: txnId } });

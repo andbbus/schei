@@ -112,7 +112,7 @@ async function classifyRuleCandidates(
 
 // The "Transfer : <account>" payee that represents transfers TO an account.
 async function transferPayee(budgetId: string, accountId: string, tx: DbClient = prisma): Promise<string> {
-  const existing = await tx.payee.findFirst({ where: { transferAccountId: accountId } });
+  const existing = await tx.payee.findFirst({ where: { budgetId, transferAccountId: accountId } });
   if (existing) return existing.id;
   const acct = await tx.account.findUniqueOrThrow({ where: { id: accountId } });
   const made = await tx.payee.create({
@@ -1316,7 +1316,7 @@ export default async function registerRoutes(app: FastifyInstance) {
     }));
   });
 
-  app.post('/scheduled', async (req) => {
+  app.post('/scheduled', async (req, reply) => {
     const b = req.body as TxnBody & {
       frequency: string;
       nextDate?: string;
@@ -1325,6 +1325,11 @@ export default async function registerRoutes(app: FastifyInstance) {
       endMonth?: string | null;
     };
     const budget = await getBudgetOrThrow();
+    if (b.transferAccountId) {
+      if (b.transferAccountId === b.accountId) return reply.code(400).send({ error: 'Cannot transfer to the same account.' });
+      const target = await prisma.account.findFirst({ where: { id: b.transferAccountId, budgetId: budget.id } });
+      if (!target) return reply.code(400).send({ error: 'Transfer account not found.' });
+    }
     // Rules apply only to plain spending drafts — transfer schedules have no
     // category of their own.
     const { rules, live } = await loadRuleInputs(budget.id);
@@ -1339,7 +1344,11 @@ export default async function registerRoutes(app: FastifyInstance) {
         rules,
         live,
       );
-    const payeeId = b.payeeId ?? (await resolvePayee(budget.id, patch.payeeName ?? b.payeeName));
+    // A transfer schedule uses the linked "Transfer : <account>" payee — never a
+    // plain payee find-or-created from the typed label.
+    const payeeId = b.transferAccountId
+      ? await transferPayee(budget.id, b.transferAccountId)
+      : b.payeeId ?? (await resolvePayee(budget.id, patch.payeeName ?? b.payeeName));
     const categoryId = b.categoryId ?? patch.categoryId ?? null;
     const memo = patch.memo !== undefined ? patch.memo : (b.memo ?? null);
     // Derived next charge (no explicit nextDate — the Subscriptions path) is
@@ -1373,7 +1382,7 @@ export default async function registerRoutes(app: FastifyInstance) {
     });
   });
 
-  app.patch('/scheduled/:id', async (req) => {
+  app.patch('/scheduled/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const b = req.body as Partial<TxnBody & { frequency: string; nextDate: string; startMonth?: string | null; endMonth?: string | null }>;
     const budget = await getBudgetOrThrow();
@@ -1389,6 +1398,19 @@ export default async function registerRoutes(app: FastifyInstance) {
     if (b.payeeName !== undefined) data.payeeId = await resolvePayee(budget.id, b.payeeName);
     if (b.amount !== undefined || b.outflow !== undefined || b.inflow !== undefined) {
       data.amount = signedAmount(b as TxnBody);
+    }
+    // A schedule can be (re)pointed at a transfer target; materialization then
+    // creates the mirrored pair per occurrence.
+    if (b.transferAccountId !== undefined) {
+      if (b.transferAccountId) {
+        const target = await prisma.account.findFirst({ where: { id: b.transferAccountId, budgetId: budget.id } });
+        if (!target) return reply.code(400).send({ error: 'Transfer account not found.' });
+        data.transferAccountId = b.transferAccountId;
+        data.payeeId = await transferPayee(budget.id, b.transferAccountId);
+        if (target.onBudget) data.categoryId = null;
+      } else {
+        data.transferAccountId = null;
+      }
     }
     return prisma.scheduledTransaction.update({ where: { id }, data });
   });
@@ -1443,15 +1465,38 @@ export default async function registerRoutes(app: FastifyInstance) {
     const b = req.body as Partial<TxnBody>;
     const budget = await getBudgetOrThrow();
 
+    const probe = await prisma.transaction.findFirst({
+      where: { id, deleted: false },
+      select: {
+        accountId: true,
+        amount: true,
+        transferAccountId: true,
+        transferTransactionId: true,
+        _count: { select: { subtransactions: true } },
+      },
+    });
+    if (!probe) return reply.code(404).send({ error: 'Transaction not found.' });
+
+    // A supplied transfer target names the counterparty account: validate it
+    // and forbid the degenerate self-transfer.
+    if (b.transferAccountId) {
+      if (b.transferAccountId === probe.accountId) {
+        return reply.code(400).send({ error: 'Cannot transfer to the same account.' });
+      }
+      const target = await prisma.account.findFirst({ where: { id: b.transferAccountId, budgetId: budget.id } });
+      if (!target) return reply.code(400).send({ error: 'Transfer account not found.' });
+      if (!probe.transferAccountId && probe._count.subtransactions > 0) {
+        return reply.code(400).send({ error: 'A split transaction cannot become a transfer.' });
+      }
+    }
+    if (b.subtransactions !== undefined && b.transferAccountId) {
+      return reply.code(400).send({ error: 'Transfers cannot be split.' });
+    }
+
     // Split payloads are validated against the (possibly new) parent amount
     // before anything is written.
     let subPayload: SubInput[] | null = null;
     if (b.subtransactions !== undefined) {
-      const probe = await prisma.transaction.findFirst({
-        where: { id, deleted: false },
-        select: { transferAccountId: true, amount: true },
-      });
-      if (!probe) return reply.code(404).send({ error: 'Transaction not found.' });
       if (probe.transferAccountId) return reply.code(400).send({ error: 'Transfers cannot be split.' });
       const parentAmount = b.amount !== undefined || b.outflow !== undefined || b.inflow !== undefined
         ? signedAmount(b as TxnBody)
@@ -1486,14 +1531,65 @@ export default async function registerRoutes(app: FastifyInstance) {
         flagColor: existing.flagColor,
         categoryId: existing.categoryId,
         payeeId: existing.payeeId,
+        transferAccountId: existing.transferAccountId,
+        transferTransactionId: existing.transferTransactionId,
       };
       // A split parent's category comes from its sub-postings; keep it null
       // unless the caller explicitly sets one.
       if (subPayload && data.categoryId === undefined) data.categoryId = null;
+
+      // Transfer linkage: create the mirrored leg, repoint it at a different
+      // account, or detach it back to a plain transaction. `conversion` is
+      // echoed into the undo op so the mirror's fate is reversible.
+      let conversion: { createdMirrorId?: string; deletedMirrorId?: string } | null = null;
+      const wantsTransfer = b.transferAccountId !== undefined;
+      const nextTransferAccountId = wantsTransfer ? (b.transferAccountId ?? null) : existing.transferAccountId;
+      const transferChanged = wantsTransfer && nextTransferAccountId !== existing.transferAccountId;
+      if (transferChanged) {
+        conversion = {};
+        if (existing.transferTransactionId) {
+          await tx.transaction.update({ where: { id: existing.transferTransactionId }, data: { deleted: true } });
+          conversion.deletedMirrorId = existing.transferTransactionId;
+        }
+        if (nextTransferAccountId) {
+          const target = await tx.account.findUniqueOrThrow({ where: { id: nextTransferAccountId } });
+          data.transferAccountId = nextTransferAccountId;
+          data.payeeId = await transferPayee(budget.id, nextTransferAccountId, tx);
+          // On-budget transfers carry no category; a tracking target budgets
+          // the outgoing leg like normal spending.
+          data.categoryId = target.onBudget ? null : b.categoryId !== undefined ? b.categoryId : existing.categoryId;
+          const finalAmount = (data.amount as number | undefined) ?? existing.amount;
+          const finalDate = (data.date as string | undefined) ?? existing.date;
+          const finalMemo = (data.memo as string | undefined) ?? existing.memo;
+          const mirror = await tx.transaction.create({
+            data: {
+              budgetId: budget.id,
+              accountId: nextTransferAccountId,
+              date: finalDate,
+              amount: -finalAmount,
+              memo: finalMemo,
+              cleared: 'uncleared',
+              transferAccountId: existing.accountId,
+              transferTransactionId: id,
+              payeeId: await transferPayee(budget.id, existing.accountId, tx),
+              importId: null,
+            },
+          });
+          conversion.createdMirrorId = mirror.id;
+          data.transferTransactionId = mirror.id;
+        } else {
+          // detach — back to a plain transaction
+          data.transferAccountId = null;
+          data.transferTransactionId = null;
+          if (b.categoryId !== undefined) data.categoryId = b.categoryId;
+        }
+      }
+
       const updated = await tx.transaction.update({ where: { id }, data });
-      // Keep a transfer's paired leg in sync (mirror amount + date).
+      // Keep a transfer's paired leg in sync (mirror amount + date) — skipped
+      // on conversion, which already wrote the mirror.
       let prevMirror: { date: string; amount: number } | null = null;
-      if (updated.transferTransactionId && (data.amount !== undefined || data.date !== undefined)) {
+      if (!conversion && updated.transferTransactionId && (data.amount !== undefined || data.date !== undefined)) {
         const mirror = await tx.transaction.findFirst({
           where: { id: updated.transferTransactionId },
           select: { date: true, amount: true },
@@ -1526,6 +1622,7 @@ export default async function registerRoutes(app: FastifyInstance) {
         prev,
         prevMirror,
         prevSubs,
+        ...(conversion ? { conversion } : {}),
       });
       return updated;
     });

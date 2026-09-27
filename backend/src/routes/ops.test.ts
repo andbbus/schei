@@ -274,6 +274,128 @@ export async function test() {
   assert.equal(await assigned(catA), 0);
   assert.equal(await assigned(catB), 0);
 
+  // 12. transfer conversions on edit: plain → transfer, transfer → plain and
+  //     repointing the counterparty, each with its mirror leg restored by undo.
+  const acct3 = await prisma.account.create({ data: { budgetId, name: 'Acct3', type: 'checking', onBudget: true } });
+
+  // plain → transfer
+  const plain = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/transactions',
+      payload: { accountId: acct, date: '2026-09-01', payeeName: 'Coffee', amount: -12000, categoryId: catA },
+    })
+  ).json();
+  assert.equal(plain.transferAccountId, null);
+  const conv = await app.inject({
+    method: 'PATCH',
+    url: `/api/transactions/${plain.id}`,
+    payload: { transferAccountId: acct2.id },
+  });
+  assert.equal(conv.statusCode, 200, 'convert to transfer: ' + conv.body.slice(0, 300));
+  let convLeg = await prisma.transaction.findUnique({ where: { id: plain.id } });
+  assert.equal(convLeg?.transferAccountId, acct2.id);
+  assert.ok(convLeg?.transferTransactionId, 'the edited leg points at a mirror');
+  assert.equal(convLeg?.categoryId, null, 'on-budget transfers carry no category');
+  const mirror = await prisma.transaction.findUnique({ where: { id: convLeg!.transferTransactionId! } });
+  assert.equal(mirror?.accountId, acct2.id);
+  assert.equal(mirror?.amount, 12000, 'mirror amount has the opposite sign');
+  assert.equal(mirror?.transferAccountId, acct);
+  assert.equal(mirror?.transferTransactionId, plain.id);
+  assert.equal(mirror?.deleted, false);
+  await undoLatest();
+  convLeg = await prisma.transaction.findUnique({ where: { id: plain.id } });
+  assert.equal(convLeg?.transferAccountId, null, 'undo detaches the transfer');
+  assert.equal(convLeg?.transferTransactionId, null);
+  assert.equal(convLeg?.categoryId, catA, 'undo restores the previous category');
+  assert.equal(
+    (await prisma.transaction.findUnique({ where: { id: mirror!.id } }))?.deleted,
+    true,
+    'undo removes the created mirror',
+  );
+
+  // transfer → plain
+  const tr = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/transactions',
+      payload: { accountId: acct, date: '2026-09-02', amount: -9000, transferAccountId: acct3.id },
+    })
+  ).json();
+  const trMirrorId = (await prisma.transaction.findUnique({ where: { id: tr.id } }))!.transferTransactionId!;
+  const det = await app.inject({
+    method: 'PATCH',
+    url: `/api/transactions/${tr.id}`,
+    payload: { transferAccountId: null, payeeName: 'Refund', categoryId: catB },
+  });
+  assert.equal(det.statusCode, 200, 'detach: ' + det.body.slice(0, 300));
+  let dl = await prisma.transaction.findUnique({ where: { id: tr.id } });
+  assert.equal(dl?.transferAccountId, null);
+  assert.equal(dl?.transferTransactionId, null);
+  assert.equal(dl?.categoryId, catB);
+  assert.equal((await prisma.transaction.findUnique({ where: { id: trMirrorId } }))?.deleted, true, 'detach hides the mirror');
+  await undoLatest();
+  dl = await prisma.transaction.findUnique({ where: { id: tr.id } });
+  assert.equal(dl?.transferAccountId, acct3.id, 'undo re-attaches the transfer');
+  assert.equal(dl?.transferTransactionId, trMirrorId);
+  assert.equal((await prisma.transaction.findUnique({ where: { id: trMirrorId } }))?.deleted, false, 'undo restores the mirror');
+
+  // repoint the counterparty
+  const tr2 = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/transactions',
+      payload: { accountId: acct, date: '2026-09-03', amount: -7000, transferAccountId: acct2.id },
+    })
+  ).json();
+  const oldMirror = (await prisma.transaction.findUnique({ where: { id: tr2.id } }))!.transferTransactionId!;
+  const rep = await app.inject({
+    method: 'PATCH',
+    url: `/api/transactions/${tr2.id}`,
+    payload: { transferAccountId: acct3.id },
+  });
+  assert.equal(rep.statusCode, 200, 'repoint: ' + rep.body.slice(0, 300));
+  const rleg = await prisma.transaction.findUnique({ where: { id: tr2.id } });
+  assert.equal(rleg?.transferAccountId, acct3.id);
+  assert.notEqual(rleg?.transferTransactionId, oldMirror);
+  assert.equal((await prisma.transaction.findUnique({ where: { id: oldMirror } }))?.deleted, true, 'old mirror hidden');
+  const newMirror = await prisma.transaction.findUnique({ where: { id: rleg!.transferTransactionId! } });
+  assert.equal(newMirror?.accountId, acct3.id);
+  assert.equal(newMirror?.amount, 7000);
+  await undoLatest();
+  const rleg2 = await prisma.transaction.findUnique({ where: { id: tr2.id } });
+  assert.equal(rleg2?.transferAccountId, acct2.id, 'undo restores the old target');
+  assert.equal(rleg2?.transferTransactionId, oldMirror);
+  assert.equal((await prisma.transaction.findUnique({ where: { id: newMirror!.id } }))?.deleted, true, 'undo drops the new mirror');
+  assert.equal((await prisma.transaction.findUnique({ where: { id: oldMirror } }))?.deleted, false, 'undo restores the old mirror');
+
+  // self-transfer is rejected
+  const self = await app.inject({
+    method: 'PATCH',
+    url: `/api/transactions/${plain.id}`,
+    payload: { transferAccountId: acct },
+  });
+  assert.equal(self.statusCode, 400);
+
+  // a split parent cannot be turned into a transfer
+  const splitConv = await app.inject({
+    method: 'PATCH',
+    url: `/api/transactions/${splitId}`,
+    payload: { transferAccountId: acct2.id },
+  });
+  assert.equal(splitConv.statusCode, 400);
+
+  // a repeating transfer keeps the linked transfer payee, even when the UI
+  // also sends the "Transfer : <account>" label as payeeName
+  const sched = await app.inject({
+    method: 'POST',
+    url: '/api/scheduled',
+    payload: { accountId: acct, transferAccountId: acct2.id, payeeName: `Transfer : ${acct2.name}`, amount: -1000, frequency: 'monthly', nextDate: '2099-01-01' },
+  });
+  assert.equal(sched.statusCode, 200, sched.body);
+  const schedPayee = await prisma.payee.findUnique({ where: { id: sched.json().payeeId } });
+  assert.equal(schedPayee?.transferAccountId, acct2.id, 'scheduled transfer uses the linked transfer payee');
+
   await app.close();
   await prisma.$disconnect();
   rmSync(DB, { force: true });
