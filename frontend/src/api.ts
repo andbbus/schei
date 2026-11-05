@@ -303,7 +303,7 @@ export const api = {
       { csv, accountName },
     ),
   importTrCsv: (csv: string) =>
-    send<{ imported: number; skipped: number; account: string; backup: string | null }>('POST', '/import/tr-csv', { csv }),
+    send<{ imported: number; skipped: number; uncategorized: number; account: string; backup: string | null }>('POST', '/import/tr-csv', { csv }),
   importAuto: (
     b: { csv: string; mode: 'preview' | 'commit'; accountName?: string; spec?: Record<string, unknown> },
   ) =>

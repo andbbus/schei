@@ -173,7 +173,7 @@ function extractMemo(desc: string): string {
 // budget); each matched row creates a paired transaction on the counterpart.
 // This mapping is account-specific, so it comes from backend/.env
 // (IMPORT_TRANSFER_RULES as JSON, e.g. [{"match":"giroconto","account":"MainAccount"}]).
-const TRANSFER_RULES: { match: RegExp; account: string }[] = (() => {
+export const TRANSFER_RULES: { match: RegExp; account: string }[] = (() => {
   try {
     const raw = JSON.parse(process.env.IMPORT_TRANSFER_RULES || '[]') as { match: string; account: string }[];
     return raw.map((r) => ({ match: new RegExp(r.match, 'i'), account: r.account }));

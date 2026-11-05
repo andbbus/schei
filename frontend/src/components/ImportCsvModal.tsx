@@ -5,7 +5,7 @@ import { api, errMsg } from '../api'
 import { fmt, type Currency } from '../format'
 
 // Drag & drop CSV import: bank importer (BVR), Trade Republic
-// statement, or fully auto-detected dialect (sniffed server-side, with
+// app transaction export, or fully auto-detected dialect (sniffed server-side, with
 // editable column mapping before commit). The backend takes a timestamped DB
 // backup before writing.
 
@@ -65,13 +65,16 @@ export default function ImportCsvModal({
   }
 
   const imp = useMutation({
-    mutationFn: () =>
+    mutationFn: (): Promise<{ imported: number; skipped: number; account: string; backup: string | null; uncategorized?: number }> =>
       format === 'tr'
         ? api.importTrCsv(text ?? '')
         : api.importCsv(text ?? '', accountName),
     onSuccess: (r) => {
+      const snap = r.backup ? ` DB snapshot: backups/${r.backup}.` : ''
       setResult(
-        `Imported ${r.imported} transaction(s) into "${r.account}" (skipped ${r.skipped} summary/empty/duplicate rows).${r.backup ? ` DB snapshot: backups/${r.backup}.` : ''}`,
+        r.uncategorized !== undefined
+          ? `Imported ${r.imported} new transaction(s) into "${r.account}" (${r.skipped} already in the register, ${r.uncategorized} left uncategorized).${snap}`
+          : `Imported ${r.imported} transaction(s) into "${r.account}" (skipped ${r.skipped} summary/empty/duplicate rows).${snap}`,
       )
       refreshInvalidate()
       setText(null)
@@ -155,7 +158,7 @@ export default function ImportCsvModal({
             className="rounded border border-slate-200 px-2 py-1.5 text-sm"
           >
             <option value="bvr">Bank CSV (BVR)</option>
-            <option value="tr">Trade Republic statement</option>
+            <option value="tr">Trade Republic (app transaction export)</option>
             <option value="auto">Auto-detect (any bank)</option>
           </select>
           {format !== 'tr' && (

@@ -31,7 +31,7 @@ export default async function importRoutes(app: FastifyInstance) {
     return { ...result, backup };
   });
 
-  // Trade Republic statement format (DATA;IMPORTO;PAYEE;MEMO).
+  // Trade Republic app "Transaction export" CSV (see importTradeRepublic.ts).
   app.post('/import/tr-csv', async (req, reply) => {
     const b = req.body as { csv?: string };
     const budget = await getBudgetOrThrow();

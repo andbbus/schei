@@ -167,7 +167,7 @@ If you change engine math, re-run both.
   unconfigured. Parsers + email builder are pure (`engine/groceries.ts`,
   tested).
 - **`routes/imports.ts`** — in-app file imports: `POST /import/csv` (BVR
-  format) + `POST /import/tr-csv` (TR format) + `POST /import/auto`
+  format) + `POST /import/tr-csv` (Trade Republic app transaction export) + `POST /import/auto`
   (sniffed dialect: `mode:'preview'` returns spec + first 10 normalized rows,
   `mode:'commit'` imports with UI-overrideable column mapping), sharing
   parsers/dedup with the CLI importers (`importBankCsv` /
@@ -198,6 +198,8 @@ The seed is a real export (`Register.tsv` + `Plan.tsv`), Italian/European format
 `oracle.ts` reuses the same parsers but runs the engine in memory (no DB), so it's the fastest way to test engine changes against real numbers.
 
 Incremental bank imports (`importCsv.ts`, `importTradeRepublic.ts`) **apply payee rules per row**: a matching rule beats the inflow fallback (`pickCategory(payeeName, rules, live, null) ?? inflow`), explicit categories from the TSV are never overridden.
+
+**Trade Republic** (`importTradeRepublic.ts`) reads the TR app's *Transaction export* CSV (comma, ISO dates, dot decimals, `transaction_id` per row). Cash effect = `amount + fee + tax`. Because TR rows are often hand-entered or schedule-materialized first, it matches against the register instead of trusting names: `tr-export:<transaction_id>` importId → same amount ±4 days (any payee) → two card rows summing to one register row → similar payee ±3%/±3 days (FX). Rows it wrote are matched by id only, never claimed by a neighbouring same-amount row. New rows: existing payee reused case-insensitively → payee rules (rename the raw TR merchant names there) → the payee's dominant past category (≥3 rows, ≥60%) → Ready to Assign for inflows. Transfers: `IMPORT_TRANSFER_RULES` regexes are tested against the description, which carries the counterparty IBAN, and create linked pairs via `createTransaction`. The matcher is pure (`matchExisting`) and covered by `importTradeRepublic.test.ts`.
 
 ## Frontend data flow
 

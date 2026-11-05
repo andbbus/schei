@@ -203,7 +203,7 @@ export interface TxnBody {
 
 // Marker stamped on transactions auto-materialized from a schedule, so
 // deleting the schedule can find (and clean up) its own phantom charges.
-// Distinct from the bank-import prefixes (bvr-csv:/tr-csv:).
+// Distinct from the bank-import prefixes (bvr-csv:/tr-export:).
 export const schedMarker = (scheduleId: string, date: string) => `sched:${scheduleId}:${date}`;
 
 export interface SubInput {
