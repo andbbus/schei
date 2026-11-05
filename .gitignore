@@ -4,10 +4,12 @@ dist/
 build/
 *.tsbuildinfo
 
-# env
+# env / secrets / machine-local notes
 .env
 .env.*
 !.env.example
+secrets/
+CLAUDE.local.md
 
 # database (local SQLite — never commit financial data)
 *.sqlite

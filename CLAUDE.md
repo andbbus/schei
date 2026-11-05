@@ -4,6 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Schei ("money" in the author's dialect) — a local-first envelope-budgeting app modeled on YNAB's engine and UX. Single user, no auth. Optionally seeded from a YNAB TSV export.
 
+## Live instance: edit on the server (read first)
+
+The author's Schei runs 24/7 on a Linux server, and **the server checkout is the canonical working copy**. All code changes are made, tested, committed and pushed **there**. Any other checkout (e.g. the laptop) is a mirror with a stale DB: update it with `git pull` only, never edit it, and never run `start.command` / `npm start` on it (that would serve an outdated budget). Host, paths and access details are in each checkout's gitignored `CLAUDE.local.md`. If you are not on the server, stop and work there over ssh.
+
+Server layout (systemd units, no Docker):
+- `schei-api.service`: `tsx src/server.ts` with `HOST=127.0.0.1` (`server.ts` binds `HOST`, default `0.0.0.0`) and `TZ` set so the Monday digest fires at local 08:00.
+- `schei-web.service`: `vite preview --host 127.0.0.1 --port 4173` serving `frontend/dist`. Preview inherits the `/api` proxy (`VITE_API_TARGET=http://127.0.0.1:3001`); `preview.allowedHosts` admits `*.ts.net`.
+- Reachable only via `tailscale serve --bg 4173` (tailnet-only HTTPS). The app has **no auth**: never bind it to a public interface or open its ports.
+- Nightly snapshot: cron 03:00 runs `npm run backup` (backend/) → `backups/dev-<stamp>-daily.db`, sharing `backupDb()`'s 30-snapshot prune with the pre-import backups. It is a plain file copy, safe because nothing writes at 03:00.
+
+After changing code on the server:
+- backend: `sudo systemctl restart schei-api`
+- frontend: `npm run build` (frontend/), then `sudo systemctl restart schei-web` (preview indexes `dist/` at startup)
+- `npm test` is safe (temp DBs). Don't start dev servers there: they collide with the services and talk to the live DB.
+
 ## Commands
 
 ```bash

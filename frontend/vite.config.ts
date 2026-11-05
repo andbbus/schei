@@ -9,4 +9,6 @@ export default defineConfig({
     port: Number(process.env.VITE_PORT ?? 5173),
     proxy: { '/api': process.env.VITE_API_TARGET ?? 'http://localhost:3001' },
   },
+  // `vite preview` (server deploy) inherits the proxy; allow the Tailscale hostname
+  preview: { allowedHosts: ['.ts.net'] },
 })
